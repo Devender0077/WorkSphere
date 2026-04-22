@@ -517,6 +517,253 @@ class PayslipCreate(BaseModel):
     allowances: float = 0
     deductions: float = 0
 
+# =================== SUPER ADMIN MODELS ===================
+class Currency(BaseModel):
+    id: str = Field(default_factory=_id)
+    name: str
+    code: str
+    symbol: str
+    exchange_rate: float = 1.0
+    is_default: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CurrencyCreate(BaseModel):
+    name: str
+    code: str
+    symbol: str
+    exchange_rate: Optional[float] = 1.0
+    is_default: Optional[bool] = False
+
+class SubscriptionPlan(BaseModel):
+    id: str = Field(default_factory=_id)
+    name: str
+    price_monthly: float = 0
+    price_yearly: float = 0
+    description: Optional[str] = None
+    features: List[str] = []
+    max_employees: int = 10
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SubscriptionPlanCreate(BaseModel):
+    name: str
+    price_monthly: float
+    price_yearly: float
+    description: Optional[str] = None
+    features: Optional[List[str]] = []
+    max_employees: Optional[int] = 10
+
+class LandingPage(BaseModel):
+    id: str = Field(default_factory=_id)
+    section: str
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: bool = True
+    order: int = 0
+
+class LandingPageCreate(BaseModel):
+    section: str
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: Optional[bool] = True
+
+class Language(BaseModel):
+    id: str = Field(default_factory=_id)
+    name: str
+    code: str
+    is_default: bool = False
+    direction: str = 'ltr'
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LanguageCreate(BaseModel):
+    name: str
+    code: str
+    is_default: Optional[bool] = False
+
+# =================== TENANT SETTINGS MODELS ===================
+class LeaveType(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    name: str
+    days_per_year: int = 12
+    is_paid: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LeaveTypeCreate(BaseModel):
+    name: str
+    days_per_year: Optional[int] = 12
+    is_paid: Optional[bool] = True
+
+class LeavePolicy(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    name: str
+    max_days: int = 30
+    min_days: int = 1
+    carry_forward: bool = False
+    max_carry_forward: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LeavePolicyCreate(BaseModel):
+    name: str
+    max_days: Optional[int] = 30
+    min_days: Optional[int] = 1
+    carry_forward: Optional[bool] = False
+    max_carry_forward: Optional[int] = 0
+
+class LeaveBalance(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    leave_type_id: str
+    year: str
+    total_days: int = 0
+    used_days: int = 0
+    remaining_days: int = 0
+
+class Holiday(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    name: str
+    date: str
+    is_recurring: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class HolidayCreate(BaseModel):
+    name: str
+    date: str
+    is_recurring: Optional[bool] = True
+
+class Shift(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    name: str
+    start_time: str = '09:00'
+    end_time: str = '18:00'
+    late_threshold: int = 30
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ShiftCreate(BaseModel):
+    name: str
+    start_time: Optional[str] = '09:00'
+    end_time: Optional[str] = '18:00'
+    late_threshold: Optional[int] = 30
+
+class SalaryComponent(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    name: str
+    component_type: str
+    is_taxable: bool = False
+    calculation_type: str = 'fixed'
+    calculation_value: float = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SalaryComponentCreate(BaseModel):
+    name: str
+    component_type: str
+    is_taxable: Optional[bool] = False
+    calculation_type: Optional[str] = 'fixed'
+    calculation_value: Optional[float] = 0
+
+class EmployeeSalary(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    basic_salary: float = 0
+    components: List[Dict[str, Any]] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class EmployeeSalaryCreate(BaseModel):
+    employee_id: str
+    basic_salary: float
+    components: Optional[List[Dict[str, Any]]] = []
+
+class PayrollRun(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    month: str
+    year: str
+    status: str = 'Draft'
+    total_employees: int = 0
+    total_gross: float = 0
+    total_deductions: float = 0
+    total_net: float = 0
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PayrollRunCreate(BaseModel):
+    month: str
+    year: str
+
+# =================== COMPANY SETTINGS ===================
+class CompanySettings(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    company_name: str
+    company_email: Optional[str] = None
+    company_phone: Optional[str] = None
+    company_address: Optional[str] = None
+    company_website: Optional[str] = None
+    company_logo: Optional[str] = None
+    company_tagline: Optional[str] = None
+    time_format: str = '12h'
+    date_format: str = 'dd-mm-yyyy'
+    timezone: str = 'UTC'
+    fiscal_year_start: str = '01-01'
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CompanySettingsCreate(BaseModel):
+    company_name: str
+    company_email: Optional[str] = None
+    company_phone: Optional[str] = None
+    company_address: Optional[str] = None
+    company_website: Optional[str] = None
+    company_logo: Optional[str] = None
+    company_tagline: Optional[str] = None
+    time_format: Optional[str] = '12h'
+    date_format: Optional[str] = 'dd-mm-yyyy'
+    timezone: Optional[str] = 'UTC'
+
+# =================== CONTRACTS & COMPLAINTS ===================
+class Contract(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    contract_type: str
+    start_date: str
+    end_date: Optional[str] = None
+    salary: Optional[float] = None
+    status: str = 'Active'
+    document_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ContractCreate(BaseModel):
+    employee_id: str
+    contract_type: str
+    start_date: str
+    end_date: Optional[str] = None
+    salary: Optional[float] = None
+
+class Complaint(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    from_employee_id: str
+    to_employee_id: Optional[str] = None
+    title: str
+    description: str
+    status: str = 'Pending'
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ComplaintCreate(BaseModel):
+    to_employee_id: Optional[str] = None
+    title: str
+    description: str
+
 ALL_PERMISSIONS = [
     {'key': 'tenants.read', 'label': 'View Tenants', 'group': 'Tenants'},
     {'key': 'tenants.create', 'label': 'Create Tenants', 'group': 'Tenants'},

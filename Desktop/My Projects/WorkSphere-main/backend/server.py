@@ -39,6 +39,21 @@ from models import (
     Attendance, AttendanceCreate, AttendanceUpdate,
     Training, TrainingCreate, TrainingUpdate,
     Payslip, PayslipCreate,
+    Currency, CurrencyCreate,
+    SubscriptionPlan, SubscriptionPlanCreate,
+    LandingPage, LandingPageCreate,
+    Language, LanguageCreate,
+    LeaveType, LeaveTypeCreate,
+    LeavePolicy, LeavePolicyCreate,
+    LeaveBalance,
+    Holiday, HolidayCreate,
+    Shift, ShiftCreate,
+    SalaryComponent, SalaryComponentCreate,
+    EmployeeSalary, EmployeeSalaryCreate,
+    PayrollRun, PayrollRunCreate,
+    CompanySettings, CompanySettingsCreate,
+    Contract, ContractCreate,
+    Complaint, ComplaintCreate,
     ROLE_SUPER, ROLE_ADMIN, ROLE_EMP, ROLE_LABELS, ALL_PERMISSIONS,
 )
 from seed import seed_database
@@ -1423,6 +1438,309 @@ async def get_reports_summary(user=Depends(get_current_user)):
         'approved_timeoff': approved_to,
         'present_today': present_today,
     }
+
+
+# =================== SUPER ADMIN: CURRENCIES ===================
+@api.get('/platform/currencies')
+async def list_currencies(user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    items = await db.currencies.find().to_list(100)
+    return [strip_internal(i) for i in items]
+
+@api.post('/platform/currencies')
+async def create_currency(payload: CurrencyCreate, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    if payload.is_default:
+        await db.currencies.update_many({}, {'$set': {'is_default': False}})
+    curr = Currency(name=payload.name, code=payload.code, symbol=payload.symbol, exchange_rate=payload.exchange_rate or 1.0, is_default=payload.is_default or False)
+    await db.currencies.insert_one(curr.dict())
+    return curr.dict()
+
+@api.delete('/platform/currencies/{curr_id}')
+async def delete_currency(curr_id: str, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    res = await db.currencies.delete_one({'id': curr_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Currency not found')
+    return {'ok': True}
+
+
+# =================== SUPER ADMIN: SUBSCRIPTION PLANS ===================
+@api.get('/platform/plans')
+async def list_plans(user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    items = await db.subscription_plans.find().to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/platform/plans')
+async def create_plan(payload: SubscriptionPlanCreate, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    plan = SubscriptionPlan(name=payload.name, price_monthly=payload.price_monthly, price_yearly=payload.price_yearly, description=payload.description, features=payload.features or [], max_employees=payload.max_employees or 10)
+    await db.subscription_plans.insert_one(plan.dict())
+    return plan.dict()
+
+@api.patch('/platform/plans/{plan_id}')
+async def update_plan(plan_id: str, payload: SubscriptionPlanCreate, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.subscription_plans.update_one({'id': plan_id}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Plan not found')
+    plan = await db.subscription_plans.find_one({'id': plan_id})
+    return strip_internal(plan)
+
+
+# =================== SUPER ADMIN: LANDING PAGES ===================
+@api.get('/platform/landing-pages')
+async def list_landing_pages(user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    items = await db.landing_pages.find().sort('order', 1).to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/platform/landing-pages')
+async def create_landing_page(payload: LandingPageCreate, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    page = LandingPage(section=payload.section, title=payload.title, subtitle=payload.subtitle, content=payload.content, image_url=payload.image_url, is_active=payload.is_active or True)
+    await db.landing_pages.insert_one(page.dict())
+    return page.dict()
+
+
+# =================== SUPER ADMIN: LANGUAGES ===================
+@api.get('/platform/languages')
+async def list_languages(user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    items = await db.languages.find().to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/platform/languages')
+async def create_language(payload: LanguageCreate, user=Depends(require_role(ROLE_SUPER))):
+    db = get_db()
+    if payload.is_default:
+        await db.languages.update_many({}, {'$set': {'is_default': False}})
+    lang = Language(name=payload.name, code=payload.code, is_default=payload.is_default or False)
+    await db.languages.insert_one(lang.dict())
+    return lang.dict()
+
+
+# =================== TENANT: LEAVE TYPES ===================
+@api.get('/leave-types')
+async def list_leave_types(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.leave_types.find({'tenant_id': tid}).to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/leave-types')
+async def create_leave_type(payload: LeaveTypeCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    lt = LeaveType(tenant_id=tid, name=payload.name, days_per_year=payload.days_per_year or 12, is_paid=payload.is_paid or True)
+    await db.leave_types.insert_one(lt.dict())
+    return lt.dict()
+
+
+# =================== TENANT: HOLIDAYS ===================
+@api.get('/holidays')
+async def list_holidays(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.holidays.find({'tenant_id': tid}).to_list(100)
+    return [strip_internal(i) for i in items]
+
+@api.post('/holidays')
+async def create_holiday(payload: HolidayCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    hol = Holiday(tenant_id=tid, name=payload.name, date=payload.date, is_recurring=payload.is_recurring or True)
+    await db.holidays.insert_one(hol.dict())
+    return hol.dict()
+
+
+# =================== TENANT: SHIFTS ===================
+@api.get('/shifts')
+async def list_shifts(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.shifts.find({'tenant_id': tid}).to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/shifts')
+async def create_shift(payload: ShiftCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    shift = Shift(tenant_id=tid, name=payload.name, start_time=payload.start_time or '09:00', end_time=payload.end_time or '18:00', late_threshold=payload.late_threshold or 30)
+    await db.shifts.insert_one(shift.dict())
+    return shift.dict()
+
+
+# =================== TENANT: SALARY COMPONENTS ===================
+@api.get('/salary-components')
+async def list_salary_components(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.salary_components.find({'tenant_id': tid}).to_list(50)
+    return [strip_internal(i) for i in items]
+
+@api.post('/salary-components')
+async def create_salary_component(payload: SalaryComponentCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    sc = SalaryComponent(tenant_id=tid, name=payload.name, component_type=payload.component_type, is_taxable=payload.is_taxable or False, calculation_type=payload.calculation_type or 'fixed', calculation_value=payload.calculation_value or 0)
+    await db.salary_components.insert_one(sc.dict())
+    return sc.dict()
+
+
+# =================== TENANT: EMPLOYEE SALARIES ===================
+@api.get('/employee-salaries')
+async def list_employee_salaries(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.employee_salaries.find({'tenant_id': tid}).to_list(200)
+    return [strip_internal(i) for i in items]
+
+@api.post('/employee-salaries')
+async def create_employee_salary(payload: EmployeeSalaryCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    emp = await db.employees.find_one({'id': payload.employee_id, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee not found')
+    sal = EmployeeSalary(tenant_id=tid, employee_id=payload.employee_id, basic_salary=payload.basic_salary, components=payload.components or [])
+    await db.employee_salaries.insert_one(sal.dict())
+    return sal.dict()
+
+
+# =================== TENANT: COMPANY SETTINGS ===================
+@api.get('/company/settings')
+async def get_company_settings(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    settings = await db.company_settings.find_one({'tenant_id': tid})
+    if not settings:
+        settings = {'id': str(uuid.uuid4()), 'tenant_id': tid, 'company_name': 'My Company', 'time_format': '12h', 'date_format': 'dd-mm-yyyy', 'timezone': 'UTC'}
+    return strip_internal(settings)
+
+@api.put('/company/settings')
+async def update_company_settings(payload: CompanySettingsCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    await db.company_settings.update_one({'tenant_id': tid}, {'$set': update}, upsert=True)
+    settings = await db.company_settings.find_one({'tenant_id': tid})
+    return strip_internal(settings)
+
+
+# =================== CONTRACTS ===================
+@api.get('/contracts')
+async def list_contracts(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.contracts.find({'tenant_id': tid}).to_list(200)
+    return [strip_internal(i) for i in items]
+
+@api.post('/contracts')
+async def create_contract(payload: ContractCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    emp = await db.employees.find_one({'id': payload.employee_id, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee not found')
+    contract = Contract(tenant_id=tid, employee_id=payload.employee_id, contract_type=payload.contract_type, start_date=payload.start_date, end_date=payload.end_date, salary=payload.salary)
+    await db.contracts.insert_one(contract.dict())
+    return contract.dict()
+
+
+# =================== COMPLAINTS ===================
+@api.get('/complaints')
+async def list_complaints(user=Depends(get_current_user)):
+    db = get_db()
+    uid = user['id']
+    if user['role'] == ROLE_ADMIN or user['role'] == ROLE_SUPER:
+        items = await db.complaints.find({'tenant_id': user.get('tenant_id')}).to_list(100)
+    else:
+        items = await db.complaints.find({'from_employee_id': uid}).to_list(100)
+    return [strip_internal(i) for i in items]
+
+@api.post('/complaints')
+async def create_complaint(payload: ComplaintCreate, user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    complaint = Complaint(tenant_id=tid, from_employee_id=user['id'], to_employee_id=payload.to_employee_id, title=payload.title, description=payload.description)
+    await db.complaints.insert_one(complaint.dict())
+    return complaint.dict()
+
+
+# =================== EMPLOYEE SELF SERVICE (ESS) ===================
+@api.get('/ess/dashboard')
+async def ess_dashboard(user=Depends(get_current_user)):
+    db = get_db()
+    uid = user['id']
+    tid = user.get('tenant_id')
+    
+    emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee profile not found')
+    
+    pending_leaves = await db.time_off_requests.count_documents({'employee_id': emp['id'], 'status': 'Pending'})
+    approved_leaves = await db.time_off_requests.count_documents({'employee_id': emp['id'], 'status': 'Approved'})
+    
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    attendance_today = await db.attendance.find_one({'employee_id': emp['id'], 'date': today})
+    
+    payslips = await db.payslips.find({'employee_id': emp['id']}).sort('created_at', -1).limit(3).to_list(100)
+    
+    return {
+        'employee': strip_internal(emp),
+        'pending_leaves': pending_leaves,
+        'approved_leaves': approved_leaves,
+        'attendance_today': attendance_today,
+        'recent_payslips': [strip_internal(p) for p in payslips],
+    }
+
+@api.post('/ess/clock-in')
+async def ess_clock_in(user=Depends(get_current_user)):
+    db = get_db()
+    uid = user['id']
+    tid = user.get('tenant_id')
+    
+    emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee profile not found')
+    
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    now = datetime.utcnow().strftime('%H:%M')
+    
+    existing = await db.attendance.find_one({'employee_id': emp['id'], 'date': today})
+    if existing and existing.get('clock_in'):
+        raise HTTPException(status_code=400, detail='Already clocked in today')
+    
+    att = Attendance(tenant_id=tid, employee_id=emp['id'], employee_name=f"{emp['first_name']} {emp['last_name']}", date=today, clock_in=now, status='Present')
+    await db.attendance.insert_one(att.dict())
+    return att.dict()
+
+@api.post('/ess/clock-out')
+async def ess_clock_out(user=Depends(get_current_user)):
+    db = get_db()
+    uid = user['id']
+    tid = user.get('tenant_id')
+    
+    emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee profile not found')
+    
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    now = datetime.utcnow().strftime('%H:%M')
+    
+    existing = await db.attendance.find_one({'employee_id': emp['id'], 'date': today})
+    if not existing:
+        raise HTTPException(status_code=400, detail='Not clocked in today')
+    
+    if existing.get('clock_out'):
+        raise HTTPException(status_code=400, detail='Already clocked out today')
+    
+    await db.attendance.update_one({'id': existing['id']}, {'$set': {'clock_out': now}})
+    updated = await db.attendance.find_one({'id': existing['id']})
+    return strip_internal(updated)
 
 
 app.include_router(api)
