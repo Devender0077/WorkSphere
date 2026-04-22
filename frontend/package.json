@@ -56,8 +56,8 @@
     "zod": "^3.24.4"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
+    "start": "node --stack-size=16384 node_modules/.bin/craco start",
+    "build": "node --stack-size=16384 node_modules/.bin/craco build",
     "test": "craco test"
   },
   "browserslist": {

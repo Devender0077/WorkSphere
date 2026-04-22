@@ -593,6 +593,203 @@ async def upsert_integration(key: str, payload: IntegrationConfig, user=Depends(
     return {**catalog[key], 'available': True, 'enabled': payload.enabled, 'config': payload.config or {}}
 
 
+# =================== TENANT CRUD: OFFICES / DEPARTMENTS / JOB TITLES / SCHEDULES ===================
+import uuid as _uuid
+
+def _tenant_scope(user) -> str:
+    if user.get('role') == ROLE_EMP:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    tid = user.get('tenant_id')
+    if not tid:
+        raise HTTPException(status_code=400, detail='No tenant context')
+    return tid
+
+
+class OfficeIn(_BM):
+    name: str
+    country: Optional[str] = None
+    hq: Optional[bool] = False
+    active: Optional[bool] = True
+    employees: Optional[int] = 0
+    timezone: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+
+@api.get('/offices')
+async def list_offices(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.offices.find({'tenant_id': tid}).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/offices')
+async def create_office(payload: OfficeIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    await db.offices.insert_one(doc)
+    return strip_internal(doc)
+
+@api.patch('/offices/{oid}')
+async def update_office(oid: str, payload: OfficeIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.offices.update_one({'id': oid, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    doc = await db.offices.find_one({'id': oid})
+    return strip_internal(doc)
+
+@api.delete('/offices/{oid}')
+async def delete_office(oid: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.offices.delete_one({'id': oid, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'ok': True}
+
+
+class DepartmentIn(_BM):
+    name: str
+    parent_id: Optional[str] = None
+
+
+@api.get('/departments')
+async def list_departments(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.departments.find({'tenant_id': tid}).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/departments')
+async def create_department(payload: DepartmentIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    await db.departments.insert_one(doc)
+    return strip_internal(doc)
+
+@api.patch('/departments/{did}')
+async def update_department(did: str, payload: DepartmentIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.departments.update_one({'id': did, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    doc = await db.departments.find_one({'id': did})
+    return strip_internal(doc)
+
+@api.delete('/departments/{did}')
+async def delete_department(did: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.departments.delete_one({'id': did, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'ok': True}
+
+
+class JobTitleIn(_BM):
+    name: str
+    active: Optional[bool] = True
+    count: Optional[int] = 0
+
+
+@api.get('/job-titles')
+async def list_job_titles(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.job_titles.find({'tenant_id': tid}).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/job-titles')
+async def create_job_title(payload: JobTitleIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    await db.job_titles.insert_one(doc)
+    return strip_internal(doc)
+
+@api.patch('/job-titles/{jid}')
+async def update_job_title(jid: str, payload: JobTitleIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.job_titles.update_one({'id': jid, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    doc = await db.job_titles.find_one({'id': jid})
+    return strip_internal(doc)
+
+@api.delete('/job-titles/{jid}')
+async def delete_job_title(jid: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.job_titles.delete_one({'id': jid, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'ok': True}
+
+
+class WorkScheduleIn(_BM):
+    name: str
+    effective_from: Optional[str] = None
+    standard_hours: Optional[str] = '8h 00m'
+    schedule_type: Optional[str] = 'Duration-based'
+    total: Optional[str] = '40h 00m'
+    days: Optional[dict] = None
+    is_default: Optional[bool] = False
+    active: Optional[bool] = True
+
+
+@api.get('/work-schedules')
+async def list_work_schedules(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.work_schedules.find({'tenant_id': tid}).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/work-schedules')
+async def create_work_schedule(payload: WorkScheduleIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    await db.work_schedules.insert_one(doc)
+    return strip_internal(doc)
+
+@api.patch('/work-schedules/{sid}')
+async def update_work_schedule(sid: str, payload: WorkScheduleIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.work_schedules.update_one({'id': sid, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    doc = await db.work_schedules.find_one({'id': sid})
+    return strip_internal(doc)
+
+@api.delete('/work-schedules/{sid}')
+async def delete_work_schedule(sid: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.work_schedules.delete_one({'id': sid, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'ok': True}
+
+
+# =================== AUDIT LOG (super admin) ===================
+@api.get('/platform/audit-log')
+async def list_audit(user=Depends(require_role(ROLE_SUPER)), limit: int = 100):
+    db = get_db()
+    items = await db.audit_log.find().sort('created_at', -1).to_list(limit)
+    return [strip_internal(i) for i in items]
+
+
 app.include_router(api)
 
 app.add_middleware(

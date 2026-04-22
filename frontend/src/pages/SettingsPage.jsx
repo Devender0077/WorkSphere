@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Info, Building2, GitBranch, Briefcase, CalendarDays, Shield, Puzzle, Zap, Lock, Bell, Plus, MoreVertical, Pencil, Trash2, ChevronRight, ArrowLeft, Check, X, Search, Eye, EyeOff, Loader2, Upload } from 'lucide-react';
+import { Info, Building2, GitBranch, Briefcase, CalendarDays, Shield, Puzzle, Zap, Lock, Bell, Plus, Pencil, Trash2, ArrowLeft, Check, X, Eye, EyeOff, Loader2, ChevronRight, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
+import { Toggle } from './settings/common';
+import { OfficesTab } from './settings/OfficesTab';
+import { DepartmentTab } from './settings/DepartmentTab';
+import { JobTitlesTab } from './settings/JobTitlesTab';
+import { WorkScheduleTab } from './settings/WorkScheduleTab';
 
-const TABS = [
+const TENANT_TABS = [
   { key: 'company', label: 'Company Info', Icon: Info },
   { key: 'offices', label: 'Offices', Icon: Building2 },
   { key: 'department', label: 'Department', Icon: GitBranch },
@@ -18,20 +23,23 @@ const TABS = [
   { key: 'notification', label: 'Notification', Icon: Bell },
 ];
 
-const Toggle = ({ value, onChange }) => (
-  <button
-    onClick={() => onChange(!value)}
-    className={cn('relative h-6 w-11 rounded-full transition-colors', value ? 'bg-primary' : 'bg-secondary')}
-    data-testid="toggle-btn"
-  >
-    <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform grid place-items-center', value ? 'left-[22px]' : 'left-0.5')}>
-      {value && <Check className="h-3 w-3 text-primary" />}
-    </span>
-  </button>
+const SUPER_TABS = [
+  { key: 'platform', label: 'Platform Info', Icon: Info },
+  { key: 'password', label: 'Password', Icon: Lock },
+  { key: 'notification', label: 'Notification', Icon: Bell },
+];
+
+const EMPLOYEE_TABS = [
+  { key: 'password', label: 'Password', Icon: Lock },
+  { key: 'notification', label: 'Notification', Icon: Bell },
+];
+
+const InfoRow = ({ label, value }) => (
+  <div className="flex justify-between"><span className="text-muted-foreground">{label}</span><span className="font-semibold text-foreground">{value}</span></div>
 );
 
 const CompanyInfoTab = () => {
-  const { branding, refreshBranding } = useAuth();
+  const { refreshBranding } = useAuth();
   const [form, setForm] = useState({ name: '', website: '', contact_phone: '', contact_email: '', address: '', logo_url: '', primary_color: '#10B981' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,13 +50,9 @@ const CompanyInfoTab = () => {
       try {
         const { data } = await api.get('/tenant/branding');
         setForm({
-          name: data.name || '',
-          website: data.website || '',
-          contact_phone: data.contact_phone || '',
-          contact_email: data.contact_email || '',
-          address: data.address || '',
-          logo_url: data.logo_url || '',
-          primary_color: data.primary_color || '#10B981',
+          name: data.name || '', website: data.website || '', contact_phone: data.contact_phone || '',
+          contact_email: data.contact_email || '', address: data.address || '',
+          logo_url: data.logo_url || '', primary_color: data.primary_color || '#10B981',
         });
       } finally { setLoading(false); }
     })();
@@ -72,7 +76,6 @@ const CompanyInfoTab = () => {
     <div>
       <h3 className="text-[18px] font-bold text-foreground">Company Info</h3>
       <p className="mt-1 text-[13px] text-muted-foreground">This info appears on your sidebar, payslips, and reports.</p>
-
       <div className="mt-5 flex items-center gap-5 p-5 rounded-2xl border border-border bg-background">
         {form.logo_url ? (
           <img src={form.logo_url} alt="" className="h-20 w-20 rounded-2xl object-cover border border-border" />
@@ -83,7 +86,7 @@ const CompanyInfoTab = () => {
         )}
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-foreground">Logo & Brand</div>
-          <div className="text-[12px] text-muted-foreground">Paste a logo URL (square 200×200 recommended). Color flows to the sidebar.</div>
+          <div className="text-[12px] text-muted-foreground">Paste a logo URL (square 200×200 recommended).</div>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-2">
             <input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://…/logo.png" className="h-11 rounded-xl border border-border bg-background px-3 text-[13px]" data-testid="branding-logo-input" />
             <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 h-11">
@@ -93,77 +96,54 @@ const CompanyInfoTab = () => {
           </div>
         </div>
       </div>
-
       <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Company Name <span className="text-rose-500">*</span></span>
+        <label className="block"><span className="text-[13px] font-medium text-foreground">Company Name *</span>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" data-testid="company-name-input" />
         </label>
-        <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Company Website</span>
-          <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="www.yourcompany.com" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
+        <label className="block"><span className="text-[13px] font-medium text-foreground">Company Website</span>
+          <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
         </label>
-        <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Contact Phone</span>
-          <input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="+62…" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
+        <label className="block"><span className="text-[13px] font-medium text-foreground">Contact Phone</span>
+          <input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
         </label>
-        <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Contact Email</span>
-          <input value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder="contact@yourcompany.com" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
+        <label className="block"><span className="text-[13px] font-medium text-foreground">Contact Email</span>
+          <input value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
         </label>
       </div>
-      <label className="block mt-4">
-        <span className="text-[13px] font-medium text-foreground">Address</span>
+      <label className="block mt-4"><span className="text-[13px] font-medium text-foreground">Address</span>
         <textarea rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="mt-2 w-full rounded-xl border border-border bg-background p-4 text-[13.5px] leading-6" />
       </label>
       <div className="mt-5 flex items-center gap-3">
         <button onClick={save} disabled={saving} className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90 disabled:opacity-50" data-testid="company-save-btn">
           {saving ? 'Saving…' : 'Save'}
         </button>
-        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 text-[13px] font-semibold"><Check className="h-4 w-4" /> Saved — branding updated live.</div>}
+        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 px-4 py-2 text-[13px] font-semibold dark:bg-emerald-950/30 dark:text-emerald-300"><Check className="h-4 w-4" /> Saved — branding updated live.</div>}
       </div>
     </div>
   );
 };
 
-const OfficesTab = () => {
-  const [offices, setOffices] = useState([
-    { id: 1, name: 'Unpixel Studio Jakarta', country: 'Indonesia', hq: true, active: true, employees: 50, timezone: 'GMT +07:00 Bangkok, Ha Noi, Jakarta', phone: '+6283838587171', email: 'hello@unpixel.com' },
-    { id: 2, name: 'Unpixel Studio Semarang', country: 'Indonesia', hq: false, active: false, employees: 10, timezone: 'GMT +07:00 Bangkok, Ha Noi, Jakarta', phone: '+6283843578300', email: 'hello@unpixel.com' },
-  ]);
-
-  const toggleActive = (id) => setOffices(offices.map((o) => o.id === id ? { ...o, active: !o.active } : o));
-
+const PermissionSettings = () => {
+  const SECTIONS = ['Profile Picture', 'Personal Info', 'Address', 'Emergency Contact', 'Offboarding Details', 'Bank Info', 'Job Information', 'Work Schedule'];
   return (
-    <div>
-      <div className="flex items-start justify-between">
-        <h3 className="text-[18px] font-bold text-foreground">Offices</h3>
-        <button className="inline-flex items-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-4 text-[12.5px] font-semibold hover:opacity-90">
-          <Plus className="h-4 w-4" /> Add Office
-        </button>
+    <div className="mt-5">
+      <div className="rounded-2xl border border-border bg-background p-5">
+        <div className="text-[14px] font-semibold text-foreground">Users with this role can access the information of</div>
+        <div className="mt-3 flex items-center gap-3">
+          <select className="h-11 rounded-xl border border-border bg-background px-4 text-[13.5px] font-semibold flex-1 max-w-[260px]">
+            <option>All employees</option><option>Their team only</option><option>Themselves only</option>
+          </select>
+          <span className="h-9 w-9 grid place-items-center rounded-full bg-amber-100 text-amber-600"><Lock className="h-4 w-4" /></span>
+        </div>
       </div>
-      <div className="mt-5 space-y-4">
-        {offices.map((o) => (
-          <div key={o.id} className="rounded-2xl border border-border bg-background p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="text-[15px] font-bold text-foreground">{o.name}</div>
-                  {o.hq && <span className="inline-flex rounded-md bg-primary px-2 py-0.5 text-[10px] font-bold text-white">HQ</span>}
-                </div>
-                <div className="mt-0.5 text-[12.5px] text-muted-foreground">{o.country}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Toggle value={o.active} onChange={() => toggleActive(o.id)} />
-                <button className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary text-muted-foreground"><MoreVertical className="h-4 w-4" /></button>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[13px]">
-              <div className="flex justify-between sm:block"><span className="text-muted-foreground">Number Of Employee</span><div className="font-semibold text-foreground sm:mt-0.5">{o.employees}</div></div>
-              <div className="flex justify-between sm:block"><span className="text-muted-foreground">Timezone</span><div className="font-semibold text-foreground sm:mt-0.5">{o.timezone}</div></div>
-              <div className="flex justify-between sm:block"><span className="text-muted-foreground">Contact Number</span><div className="font-semibold text-foreground sm:mt-0.5">{o.phone}</div></div>
-              <div className="flex justify-between sm:block"><span className="text-muted-foreground">Contact Email</span><div className="font-semibold text-foreground sm:mt-0.5">{o.email}</div></div>
-            </div>
+      <div className="mt-5 rounded-2xl border border-border bg-background overflow-hidden">
+        <div className="grid grid-cols-[1fr_180px] px-5 py-3 bg-secondary/30 text-[12.5px] font-semibold text-muted-foreground border-b border-border">
+          <div>Section</div><div>Permission</div>
+        </div>
+        {SECTIONS.map((s) => (
+          <div key={s} className="grid grid-cols-[1fr_180px] px-5 py-3 text-[13.5px] border-b border-border last:border-0">
+            <div className="font-semibold text-foreground">{s}</div>
+            <div className="inline-flex items-center gap-1 text-primary font-semibold"><Pencil className="h-3.5 w-3.5" /> View & Edit</div>
           </div>
         ))}
       </div>
@@ -171,253 +151,39 @@ const OfficesTab = () => {
   );
 };
 
-const DepartmentTab = () => {
-  const DEPTS = [
-    { key: 'root', label: 'Unpixel Office', children: ['HR', 'Management', 'Lead Designer', 'Marketing', 'Lead IT', 'Finance'] },
+const MemberList = ({ role }) => {
+  const members = [
+    { id: 1, name: 'Pristia Candra', email: 'lincoln@unpixel.com', initials: 'PC' },
+    { id: 2, name: 'Hanna Baptista', email: 'hanna@unpixel.com', initials: 'HB' },
+    { id: 3, name: 'Miracle Geidt', email: 'miracle@unpixel.com', initials: 'MG' },
   ];
-  const sub1 = { 'Lead Designer': ['UI UX Design'], 'UI UX Design': ['Graphic Design'], 'Lead IT': ['Android Dev'] };
-  const all = [...DEPTS[0].children, ...Object.values(sub1).flat()];
   return (
-    <div>
-      <h3 className="text-[18px] font-bold text-foreground">Department</h3>
-      <div className="mt-6 overflow-x-auto">
-        <div className="min-w-[720px] flex flex-col items-center py-6">
-          <DeptNode label="Unpixel Office" />
-          <div className="h-8 w-px bg-border" />
-          <div className="flex gap-4 items-start">
-            {DEPTS[0].children.map((c) => (
-              <div key={c} className="flex flex-col items-center">
-                <div className="w-px h-4 bg-border" />
-                <DeptNode label={c} />
-                {sub1[c] && (
-                  <>
-                    <div className="h-6 w-px bg-border" />
-                    {sub1[c].map((s) => (
-                      <div key={s} className="flex flex-col items-center">
-                        <DeptNode label={s} />
-                        {sub1[s] && (
-                          <>
-                            <div className="h-6 w-px bg-border" />
-                            {sub1[s].map((g) => <DeptNode key={g} label={g} />)}
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="mt-6 text-[12.5px] text-muted-foreground">Total departments: <span className="font-bold text-foreground">{all.length + 1}</span></div>
-    </div>
-  );
-};
-
-const DeptNode = ({ label }) => (
-  <div className="relative group">
-    <div className="rounded-xl border border-border bg-card px-5 py-2.5 text-[13px] font-semibold text-foreground shadow-sm min-w-[120px] text-center">
-      {label}
-    </div>
-    <button className="absolute -top-2 -right-2 h-6 w-6 grid place-items-center rounded-full bg-foreground text-background text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-      <Pencil className="h-3 w-3" />
-    </button>
-    <button className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-6 w-6 grid place-items-center rounded-full bg-primary text-white">
-      <Plus className="h-3 w-3" />
-    </button>
-  </div>
-);
-
-const JobTitlesTab = () => {
-  const [titles, setTitles] = useState([
-    { id: 1, name: 'UI UX Designer', count: 10, active: true },
-    { id: 2, name: 'Product Manager', count: 5, active: true },
-    { id: 3, name: 'Android Developer', count: 8, active: true },
-    { id: 4, name: 'Marketing Lead', count: 3, active: false },
-  ]);
-  const toggle = (id) => setTitles(titles.map((t) => t.id === id ? { ...t, active: !t.active } : t));
-  const remove = (id) => setTitles(titles.filter((t) => t.id !== id));
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h3 className="text-[18px] font-bold text-foreground">Job Titles</h3>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64 hidden sm:block">
+    <div className="mt-5">
+      <div className="rounded-2xl border border-border bg-background p-5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="text-[14px] font-semibold text-foreground">Add {role.name} Member</div>
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input placeholder="Search job title" className="w-full h-10 rounded-xl border border-border bg-background pl-9 pr-3 text-[13px]" />
+            <input placeholder="Search Member" className="w-full h-11 rounded-xl border border-border bg-background pl-9 pr-3 text-[13px]" />
           </div>
-          <button className="inline-flex items-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-4 text-[12.5px] font-semibold hover:opacity-90">
-            <Plus className="h-4 w-4" /> Add New
-          </button>
         </div>
       </div>
-      <div className="mt-5 rounded-2xl border border-border bg-background overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[560px]">
-          <thead className="border-b border-border bg-secondary/30">
-            <tr className="text-left text-muted-foreground">
-              <th className="p-4 font-semibold">Job Title</th>
-              <th className="p-4 font-semibold">Number of Employees</th>
-              <th className="p-4 font-semibold">Active</th>
-              <th className="p-4 font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {titles.map((t) => (
-              <tr key={t.id} className="hover:bg-secondary/30">
-                <td className="p-4 font-semibold text-foreground">{t.name}</td>
-                <td className="p-4 text-foreground">{t.count}</td>
-                <td className="p-4"><Toggle value={t.active} onChange={() => toggle(t.id)} /></td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    <button className="h-8 w-8 grid place-items-center rounded-lg bg-sky-500 text-white hover:bg-sky-600"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => remove(t.id)} className="h-8 w-8 grid place-items-center rounded-lg bg-rose-500 text-white hover:bg-rose-600"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const WorkScheduleTab = () => {
-  const [schedules, setSchedules] = useState([
-    { id: 1, name: 'Mon-Fri, Duration 40 hours/week', isDefault: true, active: true, standard: '8h 00m', effective: '01 Jan 2023', type: 'Duration-based', total: '40h 00m', days: { Mon: '8h 00m', Tue: '8h 00m', Wed: '8h 00m', Thu: '8h 00m', Fri: '8h 00m' } },
-    { id: 2, name: 'Mon-Fri, Duration 35 hours/week', isDefault: false, active: false, standard: '7h 00m', effective: '01 Jan 2023', type: 'Duration-based', total: '35h 00m', days: { Mon: '7h', Tue: '7h', Wed: '7h', Thu: '7h', Fri: '7h' } },
-  ]);
-  const [expanded, setExpanded] = useState(1);
-  const [showModal, setShowModal] = useState(false);
-  const toggle = (id) => setSchedules(schedules.map((s) => s.id === id ? { ...s, active: !s.active } : s));
-
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h3 className="text-[18px] font-bold text-foreground">Work Schedule</h3>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64 hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input placeholder="Search job title" className="w-full h-10 rounded-xl border border-border bg-background pl-9 pr-3 text-[13px]" />
-          </div>
-          <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-4 text-[12.5px] font-semibold hover:opacity-90" data-testid="add-schedule-btn">
-            <Plus className="h-4 w-4" /> Add New
-          </button>
+      <div className="mt-5 rounded-2xl border border-border bg-background overflow-hidden">
+        <div className="grid grid-cols-[1fr_1fr_80px] px-5 py-3 bg-secondary/30 text-[12.5px] font-semibold text-muted-foreground border-b border-border">
+          <div>Member</div><div>Email</div><div className="text-right">Action</div>
         </div>
-      </div>
-
-      <div className="mt-5 space-y-4">
-        {schedules.map((s) => (
-          <div key={s.id} className="rounded-2xl border border-border bg-background overflow-hidden">
-            <div className="w-full flex items-center justify-between px-5 py-4">
-              <button onClick={() => setExpanded(expanded === s.id ? null : s.id)} className="flex items-center gap-2 text-left flex-1" data-testid={`schedule-row-${s.id}`}>
-                <span className="text-[15px] font-bold text-foreground">{s.name}</span>
-                {s.isDefault && <span className="inline-flex rounded-md bg-secondary px-2 py-0.5 text-[9.5px] font-bold uppercase text-muted-foreground">Default</span>}
-              </button>
-              <div className="flex items-center gap-2">
-                <Toggle value={s.active} onChange={() => toggle(s.id)} />
-                <button onClick={() => setExpanded(expanded === s.id ? null : s.id)} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary">
-                  <ChevronRight className={cn('h-5 w-5 text-muted-foreground transition-transform', expanded === s.id && 'rotate-90')} />
-                </button>
-              </div>
+        {members.map((m) => (
+          <div key={m.id} className="grid grid-cols-[1fr_1fr_80px] px-5 py-3 items-center text-[13px] border-b border-border last:border-0">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[11px] font-bold">{m.initials}</div>
+              <div className="font-semibold text-foreground truncate">{m.name}</div>
             </div>
-            {expanded === s.id && (
-              <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 text-[13px]">
-                <div className="space-y-2">
-                  <InfoRow label="Standard working hours/day" value={s.standard} />
-                  <InfoRow label="Effective from" value={s.effective} />
-                  <InfoRow label="Schedule type" value={s.type} />
-                  <InfoRow label="Total working hours/week" value={s.total} />
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-2">Daily working hours</div>
-                  <div className="space-y-1">
-                    {Object.entries(s.days).map(([d, v]) => (
-                      <div key={d} className="flex justify-between"><span className="text-muted-foreground">{d === 'Mon' ? 'Monday' : d === 'Tue' ? 'Tuesday' : d === 'Wed' ? 'Wednesday' : d === 'Thu' ? 'Thursday' : 'Friday'}</span><span className="font-semibold text-foreground">{v}</span></div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="text-muted-foreground truncate">{m.email}</div>
+            <div className="text-right">
+              <button className="h-8 w-8 grid place-items-center rounded-lg bg-rose-500 text-white ml-auto"><Trash2 className="h-4 w-4" /></button>
+            </div>
           </div>
         ))}
-      </div>
-
-      {showModal && <AddScheduleModal onClose={() => setShowModal(false)} onAdd={(s) => { setSchedules([...schedules, { ...s, id: Date.now() }]); setShowModal(false); }} />}
-    </div>
-  );
-};
-
-const InfoRow = ({ label, value }) => (
-  <div className="flex justify-between"><span className="text-muted-foreground">{label}</span><span className="font-semibold text-foreground">{value}</span></div>
-);
-
-const AddScheduleModal = ({ onClose, onAdd }) => {
-  const [name, setName] = useState('Remote Work');
-  const [effective, setEffective] = useState('2023-03-09');
-  const [hours, setHours] = useState('8h 00m');
-  const [type, setType] = useState('duration');
-  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const [days, setDays] = useState(DAYS.map((d) => ({ day: d, on: ['Saturday', 'Sunday'].indexOf(d) === -1, time: '8h 00' })));
-  const total = days.filter((d) => d.on).reduce((s) => s + 8, 0);
-
-  return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="ml-auto relative w-full max-w-lg bg-card h-full overflow-y-auto shadow-2xl" data-testid="add-schedule-modal">
-        <div className="p-6 border-b border-border flex items-center justify-between">
-          <h3 className="text-[20px] font-bold text-foreground">Add New Work Schedule</h3>
-          <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          <label className="block"><span className="text-[13px] font-medium text-foreground">Schedule Name <span className="text-rose-500">*</span></span>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block"><span className="text-[13px] font-medium text-foreground">Effective from <span className="text-rose-500">*</span></span>
-              <input type="date" value={effective} onChange={(e) => setEffective(e.target.value)} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
-            </label>
-            <label className="block"><span className="text-[13px] font-medium text-foreground">Standard working hours/day</span>
-              <input value={hours} onChange={(e) => setHours(e.target.value)} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
-            </label>
-          </div>
-          <div>
-            <div className="text-[13px] font-semibold text-foreground mb-2">Schedule type</div>
-            <div className="grid grid-cols-2 gap-3">
-              {[{ k: 'duration', l: 'Duration-based', d: 'Schedule based on a duration without a start and end time.' }, { k: 'clock', l: 'Clock-based', d: 'Schedule with a fixed start and end time.' }].map((t) => (
-                <button key={t.k} onClick={() => setType(t.k)} className={cn('text-left rounded-xl border-2 p-3', type === t.k ? 'border-primary bg-primary/5' : 'border-border')}>
-                  <div className="flex items-center justify-between">
-                    <div className="text-[13px] font-bold text-foreground">{t.l}</div>
-                    <span className={cn('h-4 w-4 rounded-full border-2 grid place-items-center', type === t.k ? 'border-primary' : 'border-border')}>{type === t.k && <span className="h-2 w-2 rounded-full bg-primary" />}</span>
-                  </div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">{t.d}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-[13px] font-semibold text-foreground mb-2">Working Time</div>
-            <div className="space-y-2">
-              {days.map((d, i) => (
-                <div key={d.day} className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 w-32">
-                    <Toggle value={d.on} onChange={() => setDays(days.map((x, j) => j === i ? { ...x, on: !x.on } : x))} />
-                    <span className="text-[13px] font-semibold text-foreground">{d.day}</span>
-                  </div>
-                  <input value={d.time} onChange={(e) => setDays(days.map((x, j) => j === i ? { ...x, time: e.target.value } : x))} disabled={!d.on} className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-[13px] disabled:opacity-50" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="p-6 border-t border-border flex items-center justify-between sticky bottom-0 bg-card">
-          <div className="text-[12.5px] text-muted-foreground">Total Working Time : <span className="font-bold text-primary">{total}h 00m</span></div>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="h-11 rounded-xl border border-border bg-card px-5 text-[13px] font-semibold hover:bg-secondary">Cancel</button>
-            <button onClick={() => onAdd({ name, standard: hours, effective, type: type === 'duration' ? 'Duration-based' : 'Clock-based', total: `${total}h 00m`, days: {}, active: true })} className="h-11 rounded-xl bg-[hsl(var(--navy))] text-white px-5 text-[13px] font-semibold">Create</button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -426,17 +192,30 @@ const AddScheduleModal = ({ onClose, onAdd }) => {
 const PermissionTab = () => {
   const [role, setRole] = useState(null);
   const [subtab, setSubtab] = useState('permission');
-  const roles = [
-    { id: 'admin', name: 'Admin', isDefault: true, desc: 'Admin can see all fields, edit all fields, and do everything the system offers.', members: 5 },
-    { id: 'manager', name: 'Manager', isDefault: false, desc: 'Manager can view team data and approve requests.', members: 12 },
-    { id: 'employee', name: 'Employee', isDefault: true, desc: 'Default role for all employees.', members: 48 },
-  ];
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/roles');
+        setRoles(data.map((r) => ({
+          id: r.id, key: r.key, name: r.name || r.key,
+          desc: r.description || '—', isDefault: !!r.system, members: r.users_count || 0,
+        })));
+      } catch { /* noop */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  if (loading) return <div className="min-h-[200px] grid place-items-center"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>;
 
   if (role) {
     const r = roles.find((x) => x.id === role);
+    if (!r) return <div className="text-muted-foreground">Role not found.</div>;
     return (
       <div>
-        <button onClick={() => setRole(null)} className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground hover:text-primary mb-3"><ArrowLeft className="h-4 w-4" /> Back</button>
+        <button onClick={() => setRole(null)} className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground mb-3"><ArrowLeft className="h-4 w-4" /> Back</button>
         <div className="flex items-center gap-2">
           <h3 className="text-[18px] font-bold text-foreground">{r.name}</h3>
           {r.isDefault && <span className="inline-flex rounded-md bg-secondary px-2 py-0.5 text-[9.5px] font-bold uppercase text-muted-foreground">Default</span>}
@@ -459,13 +238,13 @@ const PermissionTab = () => {
     <div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-[18px] font-bold text-foreground">Permission</h3>
-        <button className="inline-flex items-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-4 text-[12.5px] font-semibold hover:opacity-90">
+        <button className="inline-flex items-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-4 text-[12.5px] font-semibold" data-testid="add-role-btn">
           <Plus className="h-4 w-4" /> Add Role
         </button>
       </div>
       <div className="mt-5 space-y-3">
         {roles.map((r) => (
-          <button key={r.id} onClick={() => setRole(r.id)} className="w-full text-left rounded-2xl border border-border bg-background p-5 hover:border-primary/40 transition-colors" data-testid={`role-row-${r.id}`}>
+          <button key={r.id} onClick={() => setRole(r.id)} className="w-full text-left rounded-2xl border border-border bg-background p-5 hover:border-primary/40" data-testid={`role-row-${r.id}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -489,80 +268,6 @@ const PermissionTab = () => {
   );
 };
 
-const PermissionSettings = () => {
-  const SECTIONS = ['Profile Picture', 'Personal Info', 'Address', 'Emergency Contact', 'Offboarding Details', 'Bank Info', 'Job Information', 'Work Schedule'];
-  return (
-    <div className="mt-5">
-      <div className="rounded-2xl border border-border bg-background p-5">
-        <div className="text-[14px] font-semibold text-foreground">Users with this role can access the information of</div>
-        <div className="mt-3 flex items-center gap-3">
-          <select className="h-11 rounded-xl border border-border bg-background px-4 text-[13.5px] font-semibold flex-1 max-w-[260px]"><option>All employees</option><option>Their team only</option><option>Themselves only</option></select>
-          <span className="h-9 w-9 grid place-items-center rounded-full bg-amber-100 text-amber-600"><Lock className="h-4 w-4" /></span>
-        </div>
-      </div>
-      <div className="mt-5 rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="grid grid-cols-[1fr_180px] px-5 py-3 bg-secondary/30 text-[12.5px] font-semibold text-muted-foreground border-b border-border">
-          <div>Section</div><div>Permission</div>
-        </div>
-        {SECTIONS.map((s) => (
-          <div key={s} className="grid grid-cols-[1fr_180px] px-5 py-3 text-[13.5px] border-b border-border last:border-0">
-            <div className="font-semibold text-foreground">{s}</div>
-            <div className="inline-flex items-center gap-1 text-primary font-semibold">
-              <Pencil className="h-3.5 w-3.5" /> View & Edit
-              <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground rotate-90" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const MemberList = ({ role }) => {
-  const [members, setMembers] = useState([
-    { id: 1, name: 'Pristia Candra', email: 'lincoln@unpixel.com', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face' },
-    { id: 2, name: 'Hanna Baptista', email: 'hanna@unpixel.com', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face' },
-    { id: 3, name: 'Miracle Geidt', email: 'miracle@unpixel.com', avatar: null, initials: 'MG' },
-    { id: 4, name: 'Rayna Torff', email: 'rayna@unpixel.com', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face' },
-    { id: 5, name: 'Giana Lipshutz', email: 'giana@unpixel.com', avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&h=200&fit=crop&crop=face' },
-  ]);
-  return (
-    <div className="mt-5">
-      <div className="rounded-2xl border border-border bg-background p-5">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="text-[14px] font-semibold text-foreground">Add {role.name} Member</div>
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input placeholder="Search Member" className="w-full h-11 rounded-xl border border-border bg-background pl-9 pr-3 text-[13px]" />
-          </div>
-        </div>
-      </div>
-      <div className="mt-5 rounded-2xl border border-border bg-background overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_80px] px-5 py-3 bg-secondary/30 text-[12.5px] font-semibold text-muted-foreground border-b border-border">
-          <div>Member</div><div>Email</div><div className="text-right">Action</div>
-        </div>
-        {members.map((m) => (
-          <div key={m.id} className="grid grid-cols-[1fr_1fr_80px] px-5 py-3 items-center text-[13px] border-b border-border last:border-0">
-            <div className="flex items-center gap-3">
-              {m.avatar ? <img src={m.avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[11px] font-bold">{m.initials}</div>}
-              <div className="font-semibold text-foreground truncate">{m.name}</div>
-            </div>
-            <div className="text-muted-foreground truncate">{m.email}</div>
-            <div className="text-right">
-              <button onClick={() => setMembers(members.filter((x) => x.id !== m.id))} className="h-8 w-8 grid place-items-center rounded-lg bg-rose-500 text-white hover:bg-rose-600 ml-auto"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          </div>
-        ))}
-        <div className="flex items-center justify-center gap-2 py-4">
-          <button className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-card text-muted-foreground"><ChevronRight className="h-4 w-4 rotate-180" /></button>
-          <button className="h-8 w-8 grid place-items-center rounded-lg bg-primary text-white text-[12px] font-bold">1</button>
-          <button className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-card text-muted-foreground"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const IntegrationTab = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -570,10 +275,8 @@ const IntegrationTab = () => {
 
   useEffect(() => {
     (async () => {
-      try {
-        const { data } = await api.get('/integrations');
-        setItems(data);
-      } catch { /* noop */ }
+      try { const { data } = await api.get('/integrations'); setItems(data); }
+      catch { /* noop */ }
       finally { setLoading(false); }
     })();
   }, []);
@@ -594,7 +297,7 @@ const IntegrationTab = () => {
   return (
     <div>
       <h3 className="text-[18px] font-bold text-foreground">Integration</h3>
-      <p className="mt-1 text-[13px] text-muted-foreground">Connect HRDashboard with your favorite tools. Availability depends on your plan.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Availability depends on your plan.</p>
       <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map((i) => (
           <div key={i.key} className={cn('rounded-2xl border border-border bg-background p-5 flex items-start gap-4', !i.available && 'opacity-70')} data-testid={`integration-${i.key}`}>
@@ -603,13 +306,13 @@ const IntegrationTab = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="text-[14.5px] font-bold text-foreground">{i.name}</div>
                 <span className="text-[10.5px] font-bold uppercase text-muted-foreground">{i.category}</span>
-                {!i.available && <span className="text-[10.5px] font-bold uppercase text-amber-700 bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 rounded-md px-1.5 py-0.5">Upgrade plan</span>}
+                {!i.available && <span className="text-[10.5px] font-bold uppercase text-amber-700 bg-amber-100 rounded-md px-1.5 py-0.5 dark:bg-amber-900/40 dark:text-amber-300">Upgrade plan</span>}
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-0.5">Available on: {i.plans.map((p) => p[0].toUpperCase() + p.slice(1)).join(', ')}</div>
+              <div className="text-[12.5px] text-muted-foreground mt-0.5">Available: {i.plans.map((p) => p[0].toUpperCase() + p.slice(1)).join(', ')}</div>
               <button
                 onClick={() => toggle(i)}
                 disabled={pending === i.key || !i.available}
-                className={cn('mt-3 h-9 rounded-lg px-4 text-[12.5px] font-semibold disabled:opacity-50', i.enabled ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'border border-border bg-card text-foreground hover:bg-secondary')}
+                className={cn('mt-3 h-9 rounded-lg px-4 text-[12.5px] font-semibold disabled:opacity-50', i.enabled ? 'bg-emerald-500 text-white' : 'border border-border bg-card text-foreground hover:bg-secondary')}
                 data-testid={`integration-toggle-${i.key}`}
               >
                 {pending === i.key ? '…' : (i.enabled ? 'Connected' : 'Connect')}
@@ -625,27 +328,15 @@ const IntegrationTab = () => {
 const SubscriptionTab = () => (
   <div>
     <h3 className="text-[18px] font-bold text-foreground">Subscription</h3>
-    <p className="mt-1 text-[13px] text-muted-foreground">Manage your plan, billing and invoices.</p>
+    <p className="mt-1 text-[13px] text-muted-foreground">Manage your plan and invoices.</p>
     <div className="mt-5 rounded-2xl border border-border bg-primary/5 p-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <span className="inline-flex rounded-md bg-primary text-white px-2 py-0.5 text-[10px] font-bold uppercase">Current Plan</span>
           <div className="mt-2 text-[22px] font-bold text-foreground">Engage — Annual</div>
-          <div className="text-[12.5px] text-muted-foreground">US$72.00 / year · Next billing 01 Apr 2025</div>
+          <div className="text-[12.5px] text-muted-foreground">US$72.00 / year</div>
         </div>
-        <Link to="/billing" className="h-11 rounded-xl bg-[hsl(var(--navy))] text-white px-5 text-[13px] font-semibold grid place-items-center hover:opacity-90">Manage Plan</Link>
-      </div>
-    </div>
-    <div className="mt-5 rounded-2xl border border-border bg-background p-5">
-      <div className="text-[15px] font-bold text-foreground">Recent invoices</div>
-      <div className="mt-3 divide-y divide-border">
-        {[{ id: 'INV-001', d: '01 Apr 2025', a: '$72.00' }, { id: 'INV-002', d: '01 Apr 2024', a: '$72.00' }].map((i) => (
-          <Link key={i.id} to={`/billing/invoice/${i.id}`} className="flex items-center justify-between py-3 hover:bg-secondary/30 px-2 rounded-lg">
-            <div><div className="text-[13.5px] font-semibold text-foreground">{i.id}</div><div className="text-[11.5px] text-muted-foreground">{i.d}</div></div>
-            <div className="text-[13px] font-semibold text-foreground">{i.a}</div>
-            <span className="text-primary text-[12px] font-semibold">View</span>
-          </Link>
-        ))}
+        <Link to="/billing" className="h-11 rounded-xl bg-[hsl(var(--navy))] text-white px-5 text-[13px] font-semibold grid place-items-center">Manage Plan</Link>
       </div>
     </div>
   </div>
@@ -660,8 +351,7 @@ const PasswordTab = () => {
 
   const save = (e) => {
     e.preventDefault();
-    setError('');
-    setSaved(false);
+    setError(''); setSaved(false);
     if (!form.current || !form.next || !form.confirm) { setError('Please fill in all three fields.'); return; }
     if (form.next.length < 8) { setError('New password must be at least 8 characters.'); return; }
     if (form.next !== form.confirm) { setError('New password and confirmation do not match.'); return; }
@@ -673,11 +363,11 @@ const PasswordTab = () => {
   return (
     <div className="max-w-lg">
       <h3 className="text-[18px] font-bold text-foreground">Change Password</h3>
-      <p className="mt-1 text-[13px] text-muted-foreground">Use a strong password with at least 8 characters, mixed case, and numbers.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Min 8 chars, mixed case and numbers.</p>
       <form onSubmit={save} className="mt-5 space-y-4" data-testid="password-form">
         {[{ k: 'current', l: 'Current Password' }, { k: 'next', l: 'New Password' }, { k: 'confirm', l: 'Confirm New Password' }].map((f) => (
           <label key={f.k} className="block">
-            <span className="text-[13px] font-medium text-foreground">{f.l} <span className="text-rose-500">*</span></span>
+            <span className="text-[13px] font-medium text-foreground">{f.l} *</span>
             <div className="mt-2 relative">
               <input
                 type={show[f.k] ? 'text' : 'password'}
@@ -686,7 +376,7 @@ const PasswordTab = () => {
                 className="w-full h-12 rounded-xl border border-border bg-background px-4 pr-11 text-[14px]"
                 data-testid={`password-${f.k}-input`}
               />
-              <button type="button" onClick={() => setShow({ ...show, [f.k]: !show[f.k] })} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => setShow({ ...show, [f.k]: !show[f.k] })} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 {show[f.k] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -695,20 +385,18 @@ const PasswordTab = () => {
         {form.next && (
           <div className="flex items-center gap-2 text-[12px]">
             <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-              <div className={cn('h-full rounded-full transition-all', strength === 'weak' ? 'bg-rose-500 w-1/3' : strength === 'medium' ? 'bg-amber-500 w-2/3' : 'bg-emerald-500 w-full')} />
+              <div className={cn('h-full rounded-full', strength === 'weak' ? 'bg-rose-500 w-1/3' : strength === 'medium' ? 'bg-amber-500 w-2/3' : 'bg-emerald-500 w-full')} />
             </div>
             <span className={cn('font-semibold capitalize', strength === 'weak' ? 'text-rose-500' : strength === 'medium' ? 'text-amber-500' : 'text-emerald-600')}>{strength}</span>
           </div>
         )}
         {error && (
-          <div role="alert" aria-live="polite" className="inline-flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 px-4 py-2 text-[13px] font-semibold" data-testid="password-error">
+          <div role="alert" className="inline-flex items-center gap-2 rounded-xl bg-rose-50 text-rose-700 px-4 py-2 text-[13px] font-semibold dark:bg-rose-950/30 dark:text-rose-300" data-testid="password-error">
             <X className="h-4 w-4" /> {error}
           </div>
         )}
-        <button type="submit" className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90 block" data-testid="password-save-btn">Update Password</button>
-        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 text-[13px] font-semibold" data-testid="password-success">
-          <Check className="h-4 w-4" /> Password updated successfully.
-        </div>}
+        <button type="submit" className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold block" data-testid="password-save-btn">Update Password</button>
+        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 px-4 py-2 text-[13px] font-semibold dark:bg-emerald-950/30 dark:text-emerald-300" data-testid="password-success"><Check className="h-4 w-4" /> Password updated successfully.</div>}
       </form>
     </div>
   );
@@ -716,10 +404,10 @@ const PasswordTab = () => {
 
 const NotificationTab = () => {
   const [prefs, setPrefs] = useState([
-    { key: 'email-digest', label: 'Email digest', desc: 'Weekly summary of activity on your workspace.', email: true, push: false },
-    { key: 'timeoff', label: 'Time-off requests', desc: 'Approvals, denials, and new requests.', email: true, push: true },
-    { key: 'newhires', label: 'New hires', desc: 'When someone joins your organization.', email: true, push: true },
-    { key: 'perf', label: 'Performance reviews', desc: 'Review cycles and goals updates.', email: false, push: true },
+    { key: 'email-digest', label: 'Email digest', desc: 'Weekly summary of activity.', email: true, push: false },
+    { key: 'timeoff', label: 'Time-off requests', desc: 'Approvals, denials, new requests.', email: true, push: true },
+    { key: 'newhires', label: 'New hires', desc: 'When someone joins.', email: true, push: true },
+    { key: 'perf', label: 'Performance reviews', desc: 'Review cycles.', email: false, push: true },
     { key: 'payroll', label: 'Payroll runs', desc: 'When payroll is processed.', email: true, push: false },
     { key: 'documents', label: 'Document signatures', desc: 'Pending signatures and completions.', email: false, push: true },
   ]);
@@ -746,21 +434,49 @@ const NotificationTab = () => {
   );
 };
 
+const PlatformInfoTab = () => {
+  const { user } = useAuth();
+  return (
+    <div>
+      <h3 className="text-[18px] font-bold text-foreground">Platform Info</h3>
+      <p className="mt-1 text-[13px] text-muted-foreground">You're signed in as the platform owner. Tenants manage their own company info.</p>
+      <div className="mt-5 rounded-2xl border border-border bg-background p-5 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6 text-[13px]">
+        <InfoRow label="Name" value={user?.name || '—'} />
+        <InfoRow label="Email" value={user?.email || '—'} />
+        <InfoRow label="Role" value="Super Admin" />
+        <InfoRow label="User ID" value={user?.id || '—'} />
+      </div>
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Link to="/tenants" className="rounded-2xl border border-border bg-background p-5 hover:border-primary/40"><div className="text-[13px] font-semibold text-foreground">Manage Tenants</div><div className="mt-1 text-[12px] text-muted-foreground">Create, suspend, or upgrade tenants.</div></Link>
+        <Link to="/platform/payments" className="rounded-2xl border border-border bg-background p-5 hover:border-primary/40"><div className="text-[13px] font-semibold text-foreground">Payment Providers</div><div className="mt-1 text-[12px] text-muted-foreground">Configure Stripe and Razorpay.</div></Link>
+        <Link to="/platform/impersonate" className="rounded-2xl border border-border bg-background p-5 hover:border-primary/40"><div className="text-[13px] font-semibold text-foreground">Impersonate Users</div><div className="mt-1 text-[12px] text-muted-foreground">Sign in as any tenant admin.</div></Link>
+      </div>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
-  const [tab, setTab] = useState('company');
+  const { user } = useAuth();
+  const role = user?.role;
+  const tabs = role === 'super_admin' ? SUPER_TABS : role === 'employee' ? EMPLOYEE_TABS : TENANT_TABS;
+  const [tab, setTab] = useState(tabs[0]?.key);
+
+  useEffect(() => { setTab(tabs[0]?.key); }, [role]); // eslint-disable-line
 
   return (
     <div>
       <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground">Settings</h1>
-      <p className="mt-1 text-[13.5px] text-muted-foreground">Manage your dashboard here</p>
+      <p className="mt-1 text-[13.5px] text-muted-foreground">
+        {role === 'super_admin' ? 'Platform-level preferences.' : 'Manage your workspace here.'}
+      </p>
 
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
         <nav className="rounded-2xl border border-border bg-card p-3 self-start" data-testid="settings-sidebar">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={cn('w-full flex items-center gap-3 text-left rounded-xl px-3 py-3 text-[13.5px] font-semibold transition-colors mb-1 last:mb-0', tab === t.key ? 'bg-primary/10 text-primary border border-primary/20' : 'text-foreground hover:bg-secondary')}
+              className={cn('w-full flex items-center gap-3 text-left rounded-xl px-3 py-3 text-[13.5px] font-semibold mb-1 last:mb-0', tab === t.key ? 'bg-primary/10 text-primary border border-primary/20' : 'text-foreground hover:bg-secondary')}
               data-testid={`settings-tab-${t.key}`}
             >
               <t.Icon className="h-[18px] w-[18px]" /> {t.label}
@@ -769,6 +485,7 @@ const SettingsPage = () => {
         </nav>
 
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 lg:p-8 min-h-[480px]">
+          {tab === 'platform' && <PlatformInfoTab />}
           {tab === 'company' && <CompanyInfoTab />}
           {tab === 'offices' && <OfficesTab />}
           {tab === 'department' && <DepartmentTab />}

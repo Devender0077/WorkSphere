@@ -34,9 +34,16 @@ Pixel-perfect, multi-tenant HR SaaS clone (Figma HRDashboard UI Kit). Supports t
 - ✅ **Impersonation**: `POST /api/platform/impersonate/{user_id}` (super admin) issues short-lived token; yellow banner + "Exit impersonation" button; original session restored on exit. Audit log entry written.
 - ✅ **Payment Providers (platform)**: `GET /api/platform/payment-providers`, `PUT /api/platform/payment-providers/{stripe|razorpay}`, `POST /api/platform/payment-providers/{provider}/test`. Test/live mode, publishable/secret/webhook keys, masked display on read.
 - ✅ **Integrations (per tenant by plan)**: `GET /api/integrations`, `PUT /api/integrations/{key}` — catalog of Slack, Google Calendar, Zapier, GitHub, Jira, SSO/SAML gated by tenant plan.
+- ✅ **Settings CRUD** (real backend persistence, tenant-scoped):
+  - `GET/POST/PATCH/DELETE /api/offices`
+  - `GET/POST/PATCH/DELETE /api/departments` (tree by parent_id)
+  - `GET/POST/PATCH/DELETE /api/job-titles`
+  - `GET/POST/PATCH/DELETE /api/work-schedules`
+- ✅ **Role-aware Settings UI**: super admin sees only Platform Info + Password + Notification; tenant admin sees full 10 tabs; employee sees Password + Notification.
 - ✅ **Responsive layout**: Mobile drawer (hamburger), safe paddings, scrollable tables.
 - ✅ **Notifications + Messages popups** in TopBar (mark-all-read, per-row unread dots, deep links).
-- ✅ Product tour, Theme toggle (Light/Dark), Settings Permission subpages (Permission/Member tabs).
+- ✅ Product tour, Theme toggle (Light/Dark), Settings Permission subpages.
+- ✅ Audit log endpoint `GET /api/platform/audit-log` (super admin).
 
 ## Mocked / simulated (intentional)
 - Stripe/Razorpay live API calls (UI + test connection only; keys stored, SDK calls stubbed).
