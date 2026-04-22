@@ -1,104 +1,187 @@
-import React, { useState } from 'react';
-import { Plus, FileText, Calendar, ChevronsUpDown, X, Check, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, FileText, Search, Folder, Pencil, Trash2, X, Loader2, Download, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
 
-const INITIAL = [
-  { id: 'd1', name: 'Esential Tax', createdBy: 'Jennifer Law', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face', date: '24 Mar 2023', desc: 'Files about the importance of essential tasks', files: 5, size: '22 mb', share: 'Everyone' },
-  { id: 'd2', name: 'Project Manager', createdBy: 'Dulce Philips', avatar: null, initials: 'DP', date: '21 Jan 2023', desc: '-', files: 3, size: '15 mb', share: 'Everyone' },
-  { id: 'd3', name: 'UIUX Designer', createdBy: 'Miracle Franci', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face', date: '10 Jan 2023', desc: 'Standard of procedure about UI UX Design Team', files: 2, size: '11 mb', share: 'Everyone' },
-  { id: 'd4', name: 'IT Development', createdBy: 'Davis Curtis', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face', date: '01 Jan 2022', desc: 'Standard of procedure about IT Dev Team', files: 4, size: '20 mb', share: 'Everyone' },
-];
+const KINDS = ['file', 'policy', 'contract', 'other'];
+const DEFAULT_FOLDERS = ['General', 'Onboarding', 'Offboarding', 'Policies', 'Contracts'];
 
-const GROUPS = ['Onboarding Group', 'Offboarding Group', 'Probationary Group', 'All Employee', 'Fulltime Employee (Non-resigned employee)'];
-
-const ShareModal = ({ open, onClose, onShare }) => {
-  const [mode, setMode] = useState('Employee Group');
-  const [groups, setGroups] = useState(GROUPS);
-  if (!open) return null;
-  const removeGroup = (g) => setGroups(groups.filter((x) => x !== g));
+const DocModal = ({ initial, folders, onClose, onSave }) => {
+  const [form, setForm] = useState(initial || { name: '', url: '', folder: 'General', kind: 'file', size: '', description: '' });
+  const [saving, setSaving] = useState(false);
+  const [newFolder, setNewFolder] = useState('');
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try { await onSave({ ...form, folder: newFolder.trim() || form.folder }); } finally { setSaving(false); }
+  };
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-2xl rounded-2xl bg-card border border-border shadow-2xl p-8">
-        <h2 className="text-[22px] font-bold text-foreground text-center">Share With</h2>
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-          {['Everyone', 'Department', 'Offices', 'Employee Group'].map((m) => (
-            <button key={m} onClick={() => setMode(m)} className={cn('h-14 rounded-xl border flex items-center justify-between px-4 text-[13.5px] font-semibold transition-colors', mode === m ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-foreground hover:bg-secondary')}>
-              {m}
-              <span className={cn('h-4 w-4 rounded-full border-2 grid place-items-center', mode === m ? 'border-primary' : 'border-border')}>{mode === m && <span className="h-2 w-2 rounded-full bg-primary" />}</span>
-            </button>
-          ))}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50" />
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden" data-testid="doc-modal">
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <h3 className="text-[17px] font-bold text-foreground">{initial ? 'Edit Document' : 'New Document'}</h3>
+          <button type="button" onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary"><X className="h-4 w-4" /></button>
         </div>
-        {mode === 'Employee Group' && (
-          <div className="mt-4 rounded-xl border border-border bg-background p-3 flex flex-wrap gap-2">
-            {groups.map((g) => (
-              <span key={g} className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-[12.5px] text-foreground">
-                <button onClick={() => removeGroup(g)} className="text-muted-foreground hover:text-rose-500"><X className="h-3.5 w-3.5" /></button>
-                {g}
-              </span>
-            ))}
+        <div className="p-5 space-y-3">
+          <label className="block"><span className="text-[12.5px] font-semibold">Name *</span>
+            <input autoFocus required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]" data-testid="doc-name-input" />
+          </label>
+          <label className="block"><span className="text-[12.5px] font-semibold">URL (link to PDF / doc)</span>
+            <input value={form.url || ''} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://…/file.pdf" className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]" data-testid="doc-url-input" />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block"><span className="text-[12.5px] font-semibold">Folder</span>
+              <select value={newFolder ? '' : form.folder} onChange={(e) => { setForm({ ...form, folder: e.target.value }); setNewFolder(''); }} className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]">
+                {[...new Set([...DEFAULT_FOLDERS, ...folders.map((f) => f.name), form.folder])].filter(Boolean).map((f) => <option key={f}>{f}</option>)}
+              </select>
+            </label>
+            <label className="block"><span className="text-[12.5px] font-semibold">Or create new folder</span>
+              <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="New folder name" className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]" />
+            </label>
+            <label className="block"><span className="text-[12.5px] font-semibold">Kind</span>
+              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]">
+                {KINDS.map((k) => <option key={k}>{k}</option>)}
+              </select>
+            </label>
+            <label className="block"><span className="text-[12.5px] font-semibold">Size</span>
+              <input value={form.size || ''} onChange={(e) => setForm({ ...form, size: e.target.value })} placeholder="2.3 MB" className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-[13.5px]" />
+            </label>
           </div>
-        )}
-        <div className="mt-7 flex items-center justify-center gap-3">
-          <button onClick={onClose} className="h-12 px-8 rounded-xl border border-border bg-card text-[13.5px] font-semibold hover:bg-secondary">Cancel</button>
-          <button onClick={() => { onShare && onShare(); onClose(); }} className="h-12 px-8 rounded-xl bg-[hsl(var(--navy))] text-white text-[13.5px] font-semibold hover:opacity-90">Share Now</button>
+          <label className="block"><span className="text-[12.5px] font-semibold">Description</span>
+            <textarea rows={2} value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-[13px]" />
+          </label>
         </div>
-      </div>
+        <div className="p-5 border-t border-border flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-10 rounded-xl border border-border bg-card px-4 text-[12.5px] font-semibold">Cancel</button>
+          <button type="submit" disabled={saving} className="h-10 rounded-xl bg-[hsl(var(--navy))] text-white px-5 text-[12.5px] font-semibold disabled:opacity-50" data-testid="doc-submit-btn">{saving ? 'Saving…' : initial ? 'Update' : 'Create'}</button>
+        </div>
+      </form>
     </div>
   );
 };
 
+const KindBadge = ({ kind }) => {
+  const cls = {
+    file: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+    policy: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    contract: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    other: 'bg-secondary text-muted-foreground',
+  }[kind] || 'bg-secondary text-muted-foreground';
+  return <span className={cn('inline-flex rounded-md px-2 py-0.5 text-[10.5px] font-bold uppercase', cls)}>{kind}</span>;
+};
+
 const DocumentsPage = () => {
-  const [list] = useState(INITIAL);
-  const [share, setShare] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [folder, setFolder] = useState('All');
+  const [modal, setModal] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [d, f] = await Promise.all([api.get('/documents'), api.get('/documents/folders')]);
+      setDocs(d.data);
+      setFolders(f.data);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async (form) => {
+    if (form.id) {
+      const { data } = await api.patch('/documents/' + form.id, form);
+      setDocs((p) => p.map((x) => x.id === form.id ? data : x));
+    } else {
+      const { data } = await api.post('/documents', form);
+      setDocs((p) => [data, ...p]);
+    }
+    const { data: f } = await api.get('/documents/folders');
+    setFolders(f);
+    setModal(null);
+  };
+  const remove = async (d) => {
+    if (!window.confirm('Delete document "' + d.name + '"?')) return;
+    await api.delete('/documents/' + d.id);
+    setDocs((p) => p.filter((x) => x.id !== d.id));
+  };
+
+  const filtered = docs.filter((d) => {
+    const s = (!search || d.name.toLowerCase().includes(search.toLowerCase()));
+    const f = folder === 'All' || d.folder === folder;
+    return s && f;
+  });
+
   return (
     <div>
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-[30px] font-bold text-foreground">Documents</h1>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">These are the uploaded documents</p>
+          <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground">Documents</h1>
+          <p className="mt-1 text-[13.5px] text-muted-foreground">Central library — organize in folders, share links with your team</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-2 h-11 rounded-xl border border-border bg-card px-4 text-[13px]">
-            <Calendar className="h-4 w-4 text-muted-foreground" /> 01 Jan 2023 - 10 Mar 2023
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents" className="w-full h-11 rounded-xl border border-border bg-card pl-10 pr-4 text-[13px]" data-testid="docs-search" />
           </div>
-          <button className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white hover:opacity-90"><Plus className="h-4 w-4" /> New Folder</button>
+          <button onClick={() => setModal({})} className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white" data-testid="add-doc-btn">
+            <Plus className="h-4 w-4" /> New Document
+          </button>
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-border bg-card overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[980px]">
-          <thead className="border-b border-border">
-            <tr className="text-left text-primary">
-              {['Name', 'Created By', 'Created Date', 'Description', 'Number Of Files', 'Size', 'Share With'].map((h) => (
-                <th key={h} className="p-4 font-semibold"><span className="inline-flex items-center gap-1">{h} <ChevronsUpDown className="h-3 w-3 text-muted-foreground" /></span></th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {list.map((d) => (
-              <tr key={d.id} className="hover:bg-secondary/40">
-                <td className="p-4"><div className="flex items-center gap-2 text-foreground"><FileText className="h-4 w-4 text-muted-foreground" />{d.name}</div></td>
-                <td className="p-4"><div className="flex items-center gap-2">{d.avatar ? <img src={d.avatar} alt="" className="h-7 w-7 rounded-full object-cover" /> : <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[11px] font-bold">{d.initials}</div>}<span className="text-foreground">{d.createdBy}</span></div></td>
-                <td className="p-4"><div className="inline-flex items-center gap-1.5 text-foreground"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {d.date}</div></td>
-                <td className="p-4 text-muted-foreground max-w-[260px] truncate">{d.desc}</td>
-                <td className="p-4 text-foreground">{d.files}</td>
-                <td className="p-4 text-foreground">{d.size}</td>
-                <td className="p-4"><button onClick={() => setShare(true)} className="inline-flex items-center gap-1 text-primary font-semibold">{d.share}</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-          <div className="flex items-center gap-1">
-            <button className="h-8 w-8 rounded-lg border border-border text-muted-foreground hover:bg-secondary">&lt;</button>
-            <button className="h-8 w-8 rounded-lg bg-secondary text-foreground text-[12.5px] font-semibold">1</button>
-            <button className="h-8 w-8 rounded-lg border border-border text-muted-foreground hover:bg-secondary">&gt;</button>
-          </div>
-          <div className="text-[12.5px] text-muted-foreground">Showing 1 to 10 of 4 entries · <span className="font-semibold text-foreground">Show 10</span></div>
-        </div>
+      <div className="mt-5 flex items-center gap-2 flex-wrap">
+        {['All', ...new Set([...DEFAULT_FOLDERS, ...folders.map((f) => f.name)])].map((f) => {
+          const count = f === 'All' ? docs.length : docs.filter((d) => d.folder === f).length;
+          return (
+            <button key={f} onClick={() => setFolder(f)} className={cn('inline-flex items-center gap-1.5 h-9 rounded-lg px-3 text-[12.5px] font-semibold', folder === f ? 'bg-primary text-white' : 'bg-card border border-border text-foreground hover:bg-secondary')} data-testid={'docs-folder-' + f}>
+              <Folder className="h-3.5 w-3.5" /> {f}
+              <span className={cn('text-[11px]', folder === f ? 'text-white/80' : 'text-muted-foreground')}>{count}</span>
+            </button>
+          );
+        })}
       </div>
-      <ShareModal open={share} onClose={() => setShare(false)} />
+
+      {loading && <div className="mt-8 grid place-items-center min-h-[200px]"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>}
+      {!loading && filtered.length === 0 && (
+        <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-12 text-center">
+          <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+          <div className="mt-3 text-[15px] font-semibold text-foreground">No documents here</div>
+          <div className="mt-1 text-[13px] text-muted-foreground">Click New Document to add a file link.</div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((d) => (
+            <div key={d.id} className="rounded-2xl border border-border bg-card p-5" data-testid={'doc-card-' + d.id}>
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center"><FileText className="h-5 w-5" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-[14.5px] font-bold text-foreground truncate">{d.name}</div>
+                    <KindBadge kind={d.kind || 'file'} />
+                  </div>
+                  <div className="text-[11.5px] text-muted-foreground mt-0.5">{d.folder} · {d.size || '—'}</div>
+                </div>
+              </div>
+              {d.description && <div className="mt-3 text-[12.5px] text-muted-foreground line-clamp-2">{d.description}</div>}
+              <div className="mt-3 flex items-center justify-between">
+                <div className="text-[11px] text-muted-foreground">by {d.uploaded_by || '—'}</div>
+                <div className="flex items-center gap-1">
+                  {d.url && <a href={d.url} target="_blank" rel="noreferrer" className="h-8 w-8 grid place-items-center rounded-lg bg-primary/10 text-primary" data-testid={'doc-view-' + d.id}><ExternalLink className="h-3.5 w-3.5" /></a>}
+                  {d.url && <a href={d.url} download className="h-8 w-8 grid place-items-center rounded-lg bg-secondary" title="Download"><Download className="h-3.5 w-3.5 text-muted-foreground" /></a>}
+                  <button onClick={() => setModal(d)} className="h-8 w-8 grid place-items-center rounded-lg bg-sky-500 text-white" data-testid={'doc-edit-' + d.id}><Pencil className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => remove(d)} className="h-8 w-8 grid place-items-center rounded-lg bg-rose-500 text-white" data-testid={'doc-delete-' + d.id}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal !== null && <DocModal initial={modal && modal.id ? modal : null} folders={folders} onClose={() => setModal(null)} onSave={save} />}
     </div>
   );
 };

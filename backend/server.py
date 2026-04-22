@@ -790,6 +790,186 @@ async def list_audit(user=Depends(require_role(ROLE_SUPER)), limit: int = 100):
     return [strip_internal(i) for i in items]
 
 
+# =================== JOBS (tenant CRUD) ===================
+class JobIn(_BM):
+    title: str
+    team: Optional[str] = None
+    location: Optional[str] = None
+    type: Optional[str] = 'Full-Time'
+    status: Optional[str] = 'Active'
+    description: Optional[str] = None
+    salary_range: Optional[str] = None
+
+
+@api.get('/jobs')
+async def list_jobs(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    jobs = await db.jobs.find({'tenant_id': tid}).sort('created_at', -1).to_list(500)
+    for j in jobs:
+        j['applicants'] = await db.candidates.count_documents({'tenant_id': tid, 'job_id': j['id']})
+    return [strip_internal(j) for j in jobs]
+
+
+@api.post('/jobs')
+async def create_job(payload: JobIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow(), 'applicants': 0}
+    await db.jobs.insert_one(doc)
+    return strip_internal(doc)
+
+
+@api.patch('/jobs/{jid}')
+async def update_job(jid: str, payload: JobIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.jobs.update_one({'id': jid, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Job not found')
+    doc = await db.jobs.find_one({'id': jid})
+    doc['applicants'] = await db.candidates.count_documents({'tenant_id': tid, 'job_id': jid})
+    return strip_internal(doc)
+
+
+@api.delete('/jobs/{jid}')
+async def delete_job(jid: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    await db.candidates.delete_many({'tenant_id': tid, 'job_id': jid})
+    res = await db.jobs.delete_one({'id': jid, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Job not found')
+    return {'ok': True}
+
+
+# =================== CANDIDATES (tenant CRUD) ===================
+class CandidateIn(_BM):
+    name: str
+    title: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    stage: Optional[str] = 'Applied'
+    rating: Optional[float] = 0
+    avatar: Optional[str] = None
+    job_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+CANDIDATE_STAGES = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+
+
+@api.get('/candidates')
+async def list_candidates(user=Depends(get_current_user), job_id: Optional[str] = None):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if job_id:
+        query['job_id'] = job_id
+    items = await db.candidates.find(query).sort('created_at', -1).to_list(1000)
+    return [strip_internal(i) for i in items]
+
+
+@api.post('/candidates')
+async def create_candidate(payload: CandidateIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    if payload.stage and payload.stage not in CANDIDATE_STAGES:
+        raise HTTPException(status_code=400, detail='Invalid stage')
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    await db.candidates.insert_one(doc)
+    return strip_internal(doc)
+
+
+@api.patch('/candidates/{cid}')
+async def update_candidate(cid: str, payload: CandidateIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    if payload.stage and payload.stage not in CANDIDATE_STAGES:
+        raise HTTPException(status_code=400, detail='Invalid stage')
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.candidates.update_one({'id': cid, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Candidate not found')
+    doc = await db.candidates.find_one({'id': cid})
+    return strip_internal(doc)
+
+
+@api.delete('/candidates/{cid}')
+async def delete_candidate(cid: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.candidates.delete_one({'id': cid, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Candidate not found')
+    return {'ok': True}
+
+
+# =================== DOCUMENTS (tenant CRUD) ===================
+class DocumentIn(_BM):
+    name: str
+    url: Optional[str] = None
+    folder: Optional[str] = 'General'
+    kind: Optional[str] = 'file'  # file | policy | contract | other
+    size: Optional[str] = None
+    description: Optional[str] = None
+
+
+@api.get('/documents')
+async def list_documents(user=Depends(get_current_user), folder: Optional[str] = None):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if folder:
+        query['folder'] = folder
+    items = await db.documents.find(query).sort('created_at', -1).to_list(500)
+    return [strip_internal(i) for i in items]
+
+
+@api.get('/documents/folders')
+async def list_doc_folders(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    folders = await db.documents.distinct('folder', {'tenant_id': tid})
+    result = []
+    for f in folders:
+        count = await db.documents.count_documents({'tenant_id': tid, 'folder': f})
+        result.append({'name': f, 'count': count})
+    return result
+
+
+@api.post('/documents')
+async def create_document(payload: DocumentIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'uploaded_by': user.get('name'), 'created_at': datetime.utcnow()}
+    await db.documents.insert_one(doc)
+    return strip_internal(doc)
+
+
+@api.patch('/documents/{did}')
+async def update_document(did: str, payload: DocumentIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.documents.update_one({'id': did, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Document not found')
+    doc = await db.documents.find_one({'id': did})
+    return strip_internal(doc)
+
+
+@api.delete('/documents/{did}')
+async def delete_document(did: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.documents.delete_one({'id': did, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Document not found')
+    return {'ok': True}
+
+
 app.include_router(api)
 
 app.add_middleware(

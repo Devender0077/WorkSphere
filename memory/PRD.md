@@ -43,7 +43,10 @@ Pixel-perfect, multi-tenant HR SaaS clone (Figma HRDashboard UI Kit). Supports t
 - ✅ **Responsive layout**: Mobile drawer (hamburger), safe paddings, scrollable tables.
 - ✅ **Notifications + Messages popups** in TopBar (mark-all-read, per-row unread dots, deep links).
 - ✅ Product tour, Theme toggle (Light/Dark), Settings Permission subpages.
-- ✅ Audit log endpoint `GET /api/platform/audit-log` (super admin).
+- ✅ Audit log endpoint `GET /api/platform/audit-log` (super admin) + **Audit Log viewer UI** at `/platform/audit-log`.
+- ✅ **Jobs CRUD** — `GET/POST/PATCH/DELETE /api/jobs` with live applicant counts.
+- ✅ **Candidates CRUD** — `GET/POST/PATCH/DELETE /api/candidates`; Kanban view with inline stage-move dropdown; List view with edit/email/phone/delete actions.
+- ✅ **Documents CRUD** — `GET/POST/PATCH/DELETE /api/documents`, `GET /api/documents/folders`; folder tabs with counts, view/download/edit/delete per card.
 
 ## Mocked / simulated (intentional)
 - Stripe/Razorpay live API calls (UI + test connection only; keys stored, SDK calls stubbed).

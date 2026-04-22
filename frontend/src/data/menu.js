@@ -11,6 +11,7 @@ export const getMenu = (role) => {
         { key: 'tenants', label: 'Tenants', icon: 'building', to: '/tenants' },
         { key: 'impersonate', label: 'Impersonate', icon: 'user-check', to: '/platform/impersonate' },
         { key: 'payments', label: 'Payment Providers', icon: 'credit-card', to: '/platform/payments' },
+        { key: 'audit', label: 'Audit Log', icon: 'shield', to: '/platform/audit-log' },
         { key: 'plans', label: 'Plans & Billing', icon: 'wallet', to: '/billing' },
         { key: 'reports', label: 'Platform Reports', icon: 'trending-up', to: '/reports' },
       ],
