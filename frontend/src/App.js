@@ -38,6 +38,8 @@ import BiometricSettingsPage from '@/pages/BiometricSettingsPage';
 import DocumentsPage from '@/pages/DocumentsPage';
 import NewsPage from '@/pages/NewsPage';
 import MessagesPage from '@/pages/MessagesPage';
+import PaymentProvidersPage from '@/pages/PaymentProvidersPage';
+import ImpersonatePage from '@/pages/ImpersonatePage';
 import { SubscriptionPlansPage, CheckoutPage, InvoicePage } from '@/pages/BillingPages';
 import { ESignInboxPage, ESignTemplatesPage, ESignBuilderPage, ESignSignPage } from '@/pages/ESignPages';
 
@@ -104,6 +106,9 @@ const App = () => {
                 <Route path="/billing" element={<SubscriptionPlansPage />} />
                 <Route path="/billing/checkout/:plan" element={<CheckoutPage />} />
                 <Route path="/billing/invoice/:id" element={<InvoicePage />} />
+
+                <Route path="/platform/impersonate" element={<ImpersonatePage />} />
+                <Route path="/platform/payments" element={<PaymentProvidersPage />} />
 
                 <Route path="/documents" element={<DocumentsPage />} />
                 <Route path="/news" element={<NewsPage />} />

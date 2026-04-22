@@ -1,28 +1,21 @@
-// Role-based menu configuration
+// Role-based menu configuration.
+// Keep each role's menu focused on what that role can actually do.
+// NOTE: "News" and "Documents" live in the TopBar nav — do not duplicate them in the sidebar.
+// NOTE: "Roles & Permissions" lives inside Settings → Permission — no sidebar entry.
 
 export const getMenu = (role) => {
   if (role === 'super_admin') {
     return {
       main: [
-        { key: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/' },
+        { key: 'dashboard', label: 'Platform Dashboard', icon: 'grid', to: '/' },
         { key: 'tenants', label: 'Tenants', icon: 'building', to: '/tenants' },
-        {
-          key: 'employees', label: 'Employees', icon: 'users', children: [
-            { key: 'manage', label: 'Manage Employees', to: '/employees' },
-            { key: 'directory', label: 'Directory', to: '/employees/directory' },
-            { key: 'org', label: 'ORG Chart', to: '/employees/org-chart' },
-          ],
-        },
-        { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
-        { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
-        { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
-        { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
-        { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
-        { key: 'billing', label: 'Subscription', icon: 'credit-card', to: '/billing' },
-        { key: 'reports', label: 'Reports', icon: 'trending-up', to: '/reports' },
+        { key: 'impersonate', label: 'Impersonate', icon: 'user-check', to: '/platform/impersonate' },
+        { key: 'payments', label: 'Payment Providers', icon: 'credit-card', to: '/platform/payments' },
+        { key: 'plans', label: 'Plans & Billing', icon: 'wallet', to: '/billing' },
+        { key: 'reports', label: 'Platform Reports', icon: 'trending-up', to: '/reports' },
       ],
       bottom: [
-        { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help', badge: 8 },
+        { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help' },
         { key: 'setting', label: 'Setting', icon: 'settings', to: '/setting' },
       ],
     };
@@ -82,13 +75,10 @@ export const getMenu = (role) => {
         },
         { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
         { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
-        { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
-        { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
         { key: 'billing', label: 'Subscription', icon: 'credit-card', to: '/billing' },
-        { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
       ],
       bottom: [
-        { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help', badge: 8 },
+        { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help' },
         { key: 'setting', label: 'Setting', icon: 'settings', to: '/setting' },
       ],
     };
@@ -110,11 +100,9 @@ export const getMenu = (role) => {
       { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
       { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
       { key: 'directory', label: 'Directory', icon: 'users', to: '/employees/directory' },
-      { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
-      { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
     ],
     bottom: [
-      { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help', badge: 8 },
+      { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help' },
       { key: 'setting', label: 'Setting', icon: 'settings', to: '/setting' },
     ],
   };

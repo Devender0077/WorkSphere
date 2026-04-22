@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Info, Building2, GitBranch, Briefcase, CalendarDays, Shield, Puzzle, Zap, Lock, Bell, Plus, MoreVertical, Pencil, Trash2, ChevronRight, ArrowLeft, Check, X, Search, Eye, EyeOff } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Info, Building2, GitBranch, Briefcase, CalendarDays, Shield, Puzzle, Zap, Lock, Bell, Plus, MoreVertical, Pencil, Trash2, ChevronRight, ArrowLeft, Check, X, Search, Eye, EyeOff, Loader2, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import api from '@/lib/api';
 
 const TABS = [
   { key: 'company', label: 'Company Info', Icon: Info },
@@ -31,48 +31,97 @@ const Toggle = ({ value, onChange }) => (
 );
 
 const CompanyInfoTab = () => {
-  const [form, setForm] = useState({
-    name: 'Unpixel Studio',
-    website: 'www.unpixel.co',
-    phoneCode: '+62',
-    phone: '83843578300',
-    email: 'contact@unpixel.com',
-    overview: 'Unpixel Studio could be a creative agency that offers a range of services such as branding, graphic design, web development, and digital marketing. With a team of talented and experienced designers, developers, and marketers, Dummy Studio would work closely with clients to develop unique and effective solutions to their branding and marketing needs.',
-  });
+  const { branding, refreshBranding } = useAuth();
+  const [form, setForm] = useState({ name: '', website: '', contact_phone: '', contact_email: '', address: '', logo_url: '', primary_color: '#10B981' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/tenant/branding');
+        setForm({
+          name: data.name || '',
+          website: data.website || '',
+          contact_phone: data.contact_phone || '',
+          contact_email: data.contact_email || '',
+          address: data.address || '',
+          logo_url: data.logo_url || '',
+          primary_color: data.primary_color || '#10B981',
+        });
+      } finally { setLoading(false); }
+    })();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/tenant/branding', form);
+      await refreshBranding();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to save');
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="min-h-[200px] grid place-items-center"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>;
+
   return (
     <div>
       <h3 className="text-[18px] font-bold text-foreground">Company Info</h3>
+      <p className="mt-1 text-[13px] text-muted-foreground">This info appears on your sidebar, payslips, and reports.</p>
+
+      <div className="mt-5 flex items-center gap-5 p-5 rounded-2xl border border-border bg-background">
+        {form.logo_url ? (
+          <img src={form.logo_url} alt="" className="h-20 w-20 rounded-2xl object-cover border border-border" />
+        ) : (
+          <div className="h-20 w-20 rounded-2xl grid place-items-center text-white text-[28px] font-extrabold" style={{ backgroundColor: form.primary_color }}>
+            {(form.name[0] || 'C').toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="text-[13px] font-semibold text-foreground">Logo & Brand</div>
+          <div className="text-[12px] text-muted-foreground">Paste a logo URL (square 200×200 recommended). Color flows to the sidebar.</div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-2">
+            <input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://…/logo.png" className="h-11 rounded-xl border border-border bg-background px-3 text-[13px]" data-testid="branding-logo-input" />
+            <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 h-11">
+              <input type="color" value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="h-7 w-7 rounded-lg cursor-pointer" />
+              <input value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="flex-1 bg-transparent text-[12px] font-mono focus:outline-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">
           <span className="text-[13px] font-medium text-foreground">Company Name <span className="text-rose-500">*</span></span>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" data-testid="company-name-input" />
         </label>
         <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Company Website <span className="text-rose-500">*</span></span>
-          <div className="mt-2 relative">
-            <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="w-full h-12 rounded-xl border border-border bg-background px-4 pr-10 text-[14px]" />
-            <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-          </div>
+          <span className="text-[13px] font-medium text-foreground">Company Website</span>
+          <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="www.yourcompany.com" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
         </label>
-        <div>
-          <span className="text-[13px] font-medium text-foreground">Contact Number <span className="text-rose-500">*</span></span>
-          <div className="mt-2 grid grid-cols-[96px_1fr] gap-2">
-            <select value={form.phoneCode} onChange={(e) => setForm({ ...form, phoneCode: e.target.value })} className="h-12 rounded-xl border border-border bg-background px-3 text-[14px]">
-              <option>+62</option><option>+1</option><option>+65</option><option>+91</option>
-            </select>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
-          </div>
-        </div>
         <label className="block">
-          <span className="text-[13px] font-medium text-foreground">Contact Email <span className="text-rose-500">*</span></span>
-          <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
+          <span className="text-[13px] font-medium text-foreground">Contact Phone</span>
+          <input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="+62…" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
+        </label>
+        <label className="block">
+          <span className="text-[13px] font-medium text-foreground">Contact Email</span>
+          <input value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder="contact@yourcompany.com" className="mt-2 w-full h-12 rounded-xl border border-border bg-background px-4 text-[14px]" />
         </label>
       </div>
       <label className="block mt-4">
-        <span className="text-[13px] font-medium text-foreground">Company Overview</span>
-        <textarea rows={5} value={form.overview} onChange={(e) => setForm({ ...form, overview: e.target.value })} className="mt-2 w-full rounded-xl border border-border bg-background p-4 text-[13.5px] leading-6" />
+        <span className="text-[13px] font-medium text-foreground">Address</span>
+        <textarea rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="mt-2 w-full rounded-xl border border-border bg-background p-4 text-[13.5px] leading-6" />
       </label>
-      <button className="mt-5 h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90" data-testid="company-save-btn">Save</button>
+      <div className="mt-5 flex items-center gap-3">
+        <button onClick={save} disabled={saving} className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90 disabled:opacity-50" data-testid="company-save-btn">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 text-[13px] font-semibold"><Check className="h-4 w-4" /> Saved — branding updated live.</div>}
+      </div>
     </div>
   );
 };
@@ -261,16 +310,18 @@ const WorkScheduleTab = () => {
       <div className="mt-5 space-y-4">
         {schedules.map((s) => (
           <div key={s.id} className="rounded-2xl border border-border bg-background overflow-hidden">
-            <button onClick={() => setExpanded(expanded === s.id ? null : s.id)} className="w-full flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-2">
+            <div className="w-full flex items-center justify-between px-5 py-4">
+              <button onClick={() => setExpanded(expanded === s.id ? null : s.id)} className="flex items-center gap-2 text-left flex-1" data-testid={`schedule-row-${s.id}`}>
                 <span className="text-[15px] font-bold text-foreground">{s.name}</span>
                 {s.isDefault && <span className="inline-flex rounded-md bg-secondary px-2 py-0.5 text-[9.5px] font-bold uppercase text-muted-foreground">Default</span>}
-              </div>
+              </button>
               <div className="flex items-center gap-2">
                 <Toggle value={s.active} onChange={() => toggle(s.id)} />
-                <ChevronRight className={cn('h-5 w-5 text-muted-foreground transition-transform', expanded === s.id && 'rotate-90')} />
+                <button onClick={() => setExpanded(expanded === s.id ? null : s.id)} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary">
+                  <ChevronRight className={cn('h-5 w-5 text-muted-foreground transition-transform', expanded === s.id && 'rotate-90')} />
+                </button>
               </div>
-            </button>
+            </div>
             {expanded === s.id && (
               <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 text-[13px]">
                 <div className="space-y-2">
@@ -350,10 +401,10 @@ const AddScheduleModal = ({ onClose, onAdd }) => {
             <div className="space-y-2">
               {days.map((d, i) => (
                 <div key={d.day} className="flex items-center gap-3">
-                  <button onClick={() => setDays(days.map((x, j) => j === i ? { ...x, on: !x.on } : x))} className="flex items-center gap-2 w-32">
-                    <Toggle value={d.on} onChange={() => {}} />
+                  <div className="flex items-center gap-2 w-32">
+                    <Toggle value={d.on} onChange={() => setDays(days.map((x, j) => j === i ? { ...x, on: !x.on } : x))} />
                     <span className="text-[13px] font-semibold text-foreground">{d.day}</span>
-                  </button>
+                  </div>
                   <input value={d.time} onChange={(e) => setDays(days.map((x, j) => j === i ? { ...x, time: e.target.value } : x))} disabled={!d.on} className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-[13px] disabled:opacity-50" />
                 </div>
               ))}
@@ -513,27 +564,55 @@ const MemberList = ({ role }) => {
 };
 
 const IntegrationTab = () => {
-  const INTS = [
-    { name: 'Slack', desc: 'Send notifications to Slack channels', connected: true, color: 'bg-purple-500' },
-    { name: 'Google Calendar', desc: 'Sync time-off and meetings', connected: true, color: 'bg-sky-500' },
-    { name: 'Zapier', desc: '5,000+ apps via automations', connected: false, color: 'bg-orange-500' },
-    { name: 'GitHub', desc: 'Sync engineering team members', connected: false, color: 'bg-slate-900' },
-    { name: 'Stripe', desc: 'Billing and subscription payments', connected: true, color: 'bg-indigo-600' },
-    { name: 'Jira', desc: 'Link performance goals to tickets', connected: false, color: 'bg-blue-600' },
-  ];
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/integrations');
+        setItems(data);
+      } catch { /* noop */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  const toggle = async (it) => {
+    if (!it.available) { alert(`Upgrade plan to unlock ${it.name}`); return; }
+    setPending(it.key);
+    try {
+      const { data } = await api.put(`/integrations/${it.key}`, { enabled: !it.enabled, config: it.config || {} });
+      setItems((prev) => prev.map((x) => x.key === it.key ? { ...x, ...data } : x));
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to update');
+    } finally { setPending(null); }
+  };
+
+  if (loading) return <div className="min-h-[200px] grid place-items-center"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>;
+
   return (
     <div>
       <h3 className="text-[18px] font-bold text-foreground">Integration</h3>
-      <p className="mt-1 text-[13px] text-muted-foreground">Connect HRDashboard with your favorite tools.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Connect HRDashboard with your favorite tools. Availability depends on your plan.</p>
       <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {INTS.map((i) => (
-          <div key={i.name} className="rounded-2xl border border-border bg-background p-5 flex items-start gap-4">
-            <div className={cn('h-12 w-12 rounded-xl text-white grid place-items-center font-bold text-[18px]', i.color)}>{i.name[0]}</div>
-            <div className="flex-1">
-              <div className="text-[14.5px] font-bold text-foreground">{i.name}</div>
-              <div className="text-[12.5px] text-muted-foreground">{i.desc}</div>
-              <button className={cn('mt-3 h-9 rounded-lg px-4 text-[12.5px] font-semibold', i.connected ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'border border-border bg-card text-foreground hover:bg-secondary')}>
-                {i.connected ? 'Connected' : 'Connect'}
+        {items.map((i) => (
+          <div key={i.key} className={cn('rounded-2xl border border-border bg-background p-5 flex items-start gap-4', !i.available && 'opacity-70')} data-testid={`integration-${i.key}`}>
+            <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary grid place-items-center font-bold text-[18px]">{i.name[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="text-[14.5px] font-bold text-foreground">{i.name}</div>
+                <span className="text-[10.5px] font-bold uppercase text-muted-foreground">{i.category}</span>
+                {!i.available && <span className="text-[10.5px] font-bold uppercase text-amber-700 bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 rounded-md px-1.5 py-0.5">Upgrade plan</span>}
+              </div>
+              <div className="text-[12.5px] text-muted-foreground mt-0.5">Available on: {i.plans.map((p) => p[0].toUpperCase() + p.slice(1)).join(', ')}</div>
+              <button
+                onClick={() => toggle(i)}
+                disabled={pending === i.key || !i.available}
+                className={cn('mt-3 h-9 rounded-lg px-4 text-[12.5px] font-semibold disabled:opacity-50', i.enabled ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'border border-border bg-card text-foreground hover:bg-secondary')}
+                data-testid={`integration-toggle-${i.key}`}
+              >
+                {pending === i.key ? '…' : (i.enabled ? 'Connected' : 'Connect')}
               </button>
             </div>
           </div>
@@ -576,11 +655,16 @@ const PasswordTab = () => {
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
   const [show, setShow] = useState({ current: false, next: false, confirm: false });
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const strength = form.next.length >= 8 ? (/[A-Z]/.test(form.next) && /\d/.test(form.next) ? 'strong' : 'medium') : 'weak';
 
   const save = (e) => {
     e.preventDefault();
-    if (!form.current || !form.next || form.next !== form.confirm) { alert('Please fill all fields and confirm new password.'); return; }
+    setError('');
+    setSaved(false);
+    if (!form.current || !form.next || !form.confirm) { setError('Please fill in all three fields.'); return; }
+    if (form.next.length < 8) { setError('New password must be at least 8 characters.'); return; }
+    if (form.next !== form.confirm) { setError('New password and confirmation do not match.'); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
     setForm({ current: '', next: '', confirm: '' });
@@ -590,7 +674,7 @@ const PasswordTab = () => {
     <div className="max-w-lg">
       <h3 className="text-[18px] font-bold text-foreground">Change Password</h3>
       <p className="mt-1 text-[13px] text-muted-foreground">Use a strong password with at least 8 characters, mixed case, and numbers.</p>
-      <form onSubmit={save} className="mt-5 space-y-4">
+      <form onSubmit={save} className="mt-5 space-y-4" data-testid="password-form">
         {[{ k: 'current', l: 'Current Password' }, { k: 'next', l: 'New Password' }, { k: 'confirm', l: 'Confirm New Password' }].map((f) => (
           <label key={f.k} className="block">
             <span className="text-[13px] font-medium text-foreground">{f.l} <span className="text-rose-500">*</span></span>
@@ -616,8 +700,15 @@ const PasswordTab = () => {
             <span className={cn('font-semibold capitalize', strength === 'weak' ? 'text-rose-500' : strength === 'medium' ? 'text-amber-500' : 'text-emerald-600')}>{strength}</span>
           </div>
         )}
-        <button type="submit" className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90" data-testid="password-save-btn">Update Password</button>
-        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 text-[13px] font-semibold"><Check className="h-4 w-4" /> Password updated successfully.</div>}
+        {error && (
+          <div role="alert" aria-live="polite" className="inline-flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 px-4 py-2 text-[13px] font-semibold" data-testid="password-error">
+            <X className="h-4 w-4" /> {error}
+          </div>
+        )}
+        <button type="submit" className="h-12 rounded-xl bg-[hsl(var(--navy))] text-white px-8 text-[13.5px] font-semibold hover:opacity-90 block" data-testid="password-save-btn">Update Password</button>
+        {saved && <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 text-[13px] font-semibold" data-testid="password-success">
+          <Check className="h-4 w-4" /> Password updated successfully.
+        </div>}
       </form>
     </div>
   );

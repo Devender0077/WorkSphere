@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import ImpersonationBanner from './ImpersonationBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import ProductTour from '@/components/tour/ProductTour';
 
@@ -30,6 +31,7 @@ const DashboardLayout = () => {
         setMobileOpen={setMobileOpen}
       />
       <div className="flex-1 min-w-0 flex flex-col">
+        <ImpersonationBanner />
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8">
           <Outlet />

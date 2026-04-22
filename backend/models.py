@@ -42,6 +42,12 @@ class Tenant(BaseModel):
     plan: str = 'Pro'
     status: str = 'Active'
     employees_count: int = 0
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    website: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    address: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class TenantCreate(BaseModel):

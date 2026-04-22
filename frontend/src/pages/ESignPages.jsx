@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Upload, Type, CalendarDays, CheckSquare, PenLine, Stamp, Trash2, Send, Check, Clock, X, Eye, Users, ArrowLeft, Download, Copy } from 'lucide-react';
+import { FileText, Plus, Upload, Type, CalendarDays, CheckSquare, PenLine, Stamp, Trash2, Send, Check, Clock, X, Eye, Users, ArrowLeft, Download, Copy, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const FIELD_TYPES = [
@@ -34,7 +34,24 @@ const STATUS_COLOR = {
 
 export const ESignInboxPage = () => {
   const [tab, setTab] = useState('All');
-  const filtered = DOCUMENTS.filter((d) => tab === 'All' ? true : d.status === tab);
+  const [rows, setRows] = useState(DOCUMENTS);
+  const [menu, setMenu] = useState(null);
+  const filtered = rows.filter((d) => tab === 'All' ? true : d.status === tab);
+
+  const onDelete = (id) => {
+    if (!window.confirm('Delete this document? This cannot be undone.')) return;
+    setRows((prev) => prev.filter((d) => d.id !== id));
+    setMenu(null);
+  };
+  const onDuplicate = (d) => {
+    setRows((prev) => [{ ...d, id: `d${Date.now()}`, title: d.title + ' (copy)', status: 'Draft', signed: 0, updated: 'just now' }, ...prev]);
+    setMenu(null);
+  };
+  const onResend = (d) => {
+    alert(`Reminder sent to ${d.parties - d.signed} signer(s) (MOCK).`);
+    setMenu(null);
+  };
+
   return (
     <div>
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -44,16 +61,16 @@ export const ESignInboxPage = () => {
         </div>
         <div className="flex items-center gap-3">
           <Link to="/esign/templates" className="inline-flex items-center gap-2 h-11 rounded-xl border border-border bg-card px-4 text-[13.5px] font-semibold hover:bg-secondary">Templates</Link>
-          <Link to="/esign/builder/new" className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white hover:opacity-90"><Plus className="h-4 w-4" /> New Document</Link>
+          <Link to="/esign/builder/new" className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white hover:opacity-90" data-testid="esign-new-doc-btn"><Plus className="h-4 w-4" /> New Document</Link>
         </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { l: 'Waiting for me', v: 1, c: 'text-amber-600' },
-          { l: 'Waiting for others', v: 2, c: 'text-sky-600' },
-          { l: 'Completed', v: 1, c: 'text-primary' },
-          { l: 'Declined', v: 1, c: 'text-rose-600' },
+          { l: 'Waiting for me', v: rows.filter((r) => r.status === 'Pending').length, c: 'text-amber-600' },
+          { l: 'Waiting for others', v: rows.filter((r) => r.status === 'Pending').length, c: 'text-sky-600' },
+          { l: 'Completed', v: rows.filter((r) => r.status === 'Completed').length, c: 'text-primary' },
+          { l: 'Declined', v: rows.filter((r) => r.status === 'Declined').length, c: 'text-rose-600' },
         ].map((s) => (<div key={s.l} className="rounded-2xl border border-border bg-card p-5"><div className="text-[12px] text-muted-foreground">{s.l}</div><div className={cn('mt-2 text-[28px] font-bold', s.c)}>{s.v}</div></div>))}
       </div>
 
@@ -62,19 +79,54 @@ export const ESignInboxPage = () => {
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-card overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[780px]">
+        <table className="w-full text-[13px] min-w-[820px]">
           <thead className="border-b border-border"><tr className="text-left text-primary">
             <th className="p-4 font-semibold">Document</th><th className="p-4 font-semibold">From</th><th className="p-4 font-semibold">Signers</th><th className="p-4 font-semibold">Status</th><th className="p-4 font-semibold">Updated</th><th className="p-4 font-semibold">Action</th>
           </tr></thead>
           <tbody className="divide-y divide-border">
-            {filtered.map((d) => (<tr key={d.id} className="hover:bg-secondary/40">
-              <td className="p-4"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center"><FileText className="h-5 w-5" /></div><div className="font-semibold text-foreground">{d.title}</div></div></td>
-              <td className="p-4 text-foreground">{d.from}</td>
-              <td className="p-4"><div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-muted-foreground" />{d.signed}/{d.parties}</div></td>
-              <td className="p-4"><span className={cn('inline-flex rounded-md px-2.5 py-1 text-[10.5px] font-bold uppercase', STATUS_COLOR[d.status])}>{d.status}</span></td>
-              <td className="p-4 text-muted-foreground">{d.updated}</td>
-              <td className="p-4"><Link to={`/esign/sign/${d.id}`} className="inline-flex items-center gap-1 text-primary font-semibold"><Eye className="h-4 w-4" /> View</Link></td>
-            </tr>))}
+            {filtered.map((d) => (
+              <tr key={d.id} className="hover:bg-secondary/40" data-testid={`esign-row-${d.id}`}>
+                <td className="p-4"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center"><FileText className="h-5 w-5" /></div><div className="font-semibold text-foreground">{d.title}</div></div></td>
+                <td className="p-4 text-foreground">{d.from}</td>
+                <td className="p-4"><div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-muted-foreground" />{d.signed}/{d.parties}</div></td>
+                <td className="p-4"><span className={cn('inline-flex rounded-md px-2.5 py-1 text-[10.5px] font-bold uppercase', STATUS_COLOR[d.status])}>{d.status}</span></td>
+                <td className="p-4 text-muted-foreground">{d.updated}</td>
+                <td className="p-4">
+                  <div className="flex items-center gap-1">
+                    <Link to={`/esign/sign/${d.id}`} className="inline-flex items-center gap-1 h-8 rounded-lg bg-primary/10 text-primary px-2.5 text-[12px] font-semibold hover:bg-primary/20" data-testid={`esign-view-${d.id}`}>
+                      <Eye className="h-3.5 w-3.5" /> View
+                    </Link>
+                    {d.status !== 'Completed' && (
+                      <Link to={`/esign/builder/${d.id}`} className="h-8 w-8 grid place-items-center rounded-lg bg-sky-500 text-white hover:bg-sky-600" title="Edit" data-testid={`esign-edit-${d.id}`}>
+                        <PenLine className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                    <div className="relative">
+                      <button onClick={() => setMenu(menu === d.id ? null : d.id)} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-secondary text-muted-foreground" data-testid={`esign-more-${d.id}`}>
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      {menu === d.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} />
+                          <div className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-border bg-card shadow-xl p-1" data-testid={`esign-menu-${d.id}`}>
+                            {d.status === 'Pending' && (
+                              <button onClick={() => onResend(d)} className="w-full text-left px-3 py-2 text-[13px] rounded-lg hover:bg-secondary flex items-center gap-2"><Send className="h-3.5 w-3.5" /> Resend reminder</button>
+                            )}
+                            <button onClick={() => onDuplicate(d)} className="w-full text-left px-3 py-2 text-[13px] rounded-lg hover:bg-secondary flex items-center gap-2"><Copy className="h-3.5 w-3.5" /> Duplicate</button>
+                            <button className="w-full text-left px-3 py-2 text-[13px] rounded-lg hover:bg-secondary flex items-center gap-2"><Download className="h-3.5 w-3.5" /> Download</button>
+                            <div className="my-1 h-px bg-border" />
+                            <button onClick={() => onDelete(d.id)} className="w-full text-left px-3 py-2 text-[13px] rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 flex items-center gap-2" data-testid={`esign-delete-${d.id}`}>
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td colSpan={6} className="py-10 text-center text-muted-foreground">No documents yet</td></tr>}
           </tbody>
         </table>
       </div>

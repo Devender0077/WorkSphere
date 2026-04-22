@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronsLeft, Grid, Users, ClipboardList, Clock, Calendar, Wallet, TrendingUp, Briefcase, HelpCircle, Settings, Sun, Moon, Building2, Shield, User, LogOut, Newspaper, Folder, MessageSquare, FileSignature, CreditCard, X } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, Grid, Users, ClipboardList, Clock, Calendar, Wallet, TrendingUp, Briefcase, HelpCircle, Settings, Sun, Moon, Building2, Shield, User, LogOut, Newspaper, Folder, MessageSquare, FileSignature, CreditCard, X, UserCheck } from 'lucide-react';
 import { getMenu } from '@/data/menu';
 import { ROLE_CONFIG } from '@/data/mock';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -11,15 +11,23 @@ const ICONS = {
   grid: Grid, users: Users, clipboard: ClipboardList, clock: Clock, calendar: Calendar,
   wallet: Wallet, 'trending-up': TrendingUp, briefcase: Briefcase,
   'help-circle': HelpCircle, settings: Settings, building: Building2, shield: Shield, user: User,
-  newspaper: Newspaper, folder: Folder, message: MessageSquare, 'file-signature': FileSignature, 'credit-card': CreditCard,
+  newspaper: Newspaper, folder: Folder, message: MessageSquare, 'file-signature': FileSignature, 'credit-card': CreditCard, 'user-check': UserCheck,
 };
 
-const Logo = ({ collapsed }) => (
-  <div className="flex items-center gap-2">
-    <div className="h-8 w-8 rounded-lg bg-primary grid place-items-center text-white font-extrabold shadow-sm">H</div>
-    {!collapsed && <span className="text-[17px] font-bold tracking-tight text-foreground">HRDashboard</span>}
-  </div>
-);
+const Logo = ({ collapsed, branding }) => {
+  const name = branding?.name || 'HRDashboard';
+  const initial = (name[0] || 'H').toUpperCase();
+  return (
+    <div className="flex items-center gap-2">
+      {branding?.logo_url ? (
+        <img src={branding.logo_url} alt={name} className="h-8 w-8 rounded-lg object-cover shadow-sm" />
+      ) : (
+        <div className="h-8 w-8 rounded-lg bg-primary grid place-items-center text-white font-extrabold shadow-sm">{initial}</div>
+      )}
+      {!collapsed && <span className="text-[17px] font-bold tracking-tight text-foreground truncate">{name}</span>}
+    </div>
+  );
+};
 
 const MenuItem = ({ item, collapsed, onNavigate }) => {
   const location = useLocation();
@@ -96,14 +104,14 @@ const MenuItem = ({ item, collapsed, onNavigate }) => {
 
 const SidebarContent = ({ collapsed, setCollapsed, onNavigate, isMobile }) => {
   const { theme, setTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, branding } = useAuth();
   const menu = getMenu(user?.role || 'employee');
   const role = ROLE_CONFIG[user?.role];
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <Logo collapsed={collapsed && !isMobile} />
+        <Logo collapsed={collapsed && !isMobile} branding={branding} />
         {!collapsed && !isMobile && (
           <button onClick={() => setCollapsed(true)} className="text-muted-foreground hover:text-foreground" data-testid="sidebar-collapse-btn">
             <ChevronsLeft className="h-[18px] w-[18px]" />
