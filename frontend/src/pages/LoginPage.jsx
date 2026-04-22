@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DEMO_ACCOUNTS } from '@/data/mock';
@@ -152,7 +152,7 @@ const LoginPage = () => {
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
               Remember Me
             </label>
-            <a href="#" className="text-[13px] font-medium text-foreground hover:text-primary">Forgot Password</a>
+            <a href="/forgot-password" className="text-[13px] font-medium text-foreground hover:text-primary">Forgot Password</a>
           </div>
 
           <button
@@ -167,7 +167,7 @@ const LoginPage = () => {
           </button>
 
           <p className="mt-6 text-center text-[13px] text-muted-foreground">
-            You're new in here? <a href="#" className="font-semibold text-primary">Create Account</a>
+            You're new in here? <Link to="/signup" className="font-semibold text-primary">Create Account</Link>
           </p>
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
             © 2025 HRDashboard. Alrights reserved. <a href="#" className="font-medium">Terms &amp; Conditions</a> · <a href="#" className="font-medium">Privacy Policy</a>
