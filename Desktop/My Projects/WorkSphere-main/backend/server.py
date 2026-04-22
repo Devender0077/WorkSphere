@@ -54,6 +54,10 @@ from models import (
     CompanySettings, CompanySettingsCreate,
     Contract, ContractCreate,
     Complaint, ComplaintCreate,
+    Goal, GoalCreate, GoalUpdate,
+    PerformanceReview, PerformanceReviewCreate,
+    TimeEntry, TimeEntryCreate,
+    CompanyEvent, CompanyEventCreate,
     ROLE_SUPER, ROLE_ADMIN, ROLE_EMP, ROLE_LABELS, ALL_PERMISSIONS,
 )
 from seed import seed_database
@@ -1805,6 +1809,241 @@ async def ess_clock_out(payload: AttendanceClockOut, user=Depends(get_current_us
     
     updated = await db.attendance.find_one({'id': existing['id']})
     return {'ok': True, 'message': 'Clocked out successfully', 'hours_worked': round(hours, 2)}
+
+
+# =================== REPORTS ===================
+@api.get('/reports/attendance')
+async def get_attendance_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    department: Optional[str] = None,
+    user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER)),
+):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if start_date:
+        query['date'] = {'$gte': start_date}
+    if end_date:
+        if 'date' in query:
+            query['date']['$lte'] = end_date
+        else:
+            query['date'] = {'$lte': end_date}
+    if department:
+        emp_ids = [e['id'] for e in await db.employees.find({'tenant_id': tid, 'department': department}).to_list(1000)]
+        query['employee_id'] = {'$in': emp_ids}
+    
+    items = await db.attendance.find(query).sort('date', -1).to_list(5000)
+    return [strip_internal(i) for i in items]
+
+@api.get('/reports/leave')
+async def get_leave_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER)),
+):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if status:
+        query['status'] = status
+    
+    items = await db.time_off_requests.find(query).sort('created_at', -1).to_list(2000)
+    return [strip_internal(i) for i in items]
+
+@api.get('/reports/payroll')
+async def get_payroll_report(
+    month: Optional[str] = None,
+    year: Optional[str] = None,
+    user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER)),
+):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if month:
+        query['month'] = month
+    if year:
+        query['year'] = year
+    
+    items = await db.payslips.find(query).sort('created_at', -1).to_list(1000)
+    return [strip_internal(i) for i in items]
+
+@api.get('/reports/employees')
+async def get_employees_report(
+    department: Optional[str] = None,
+    office: Optional[str] = None,
+    status: Optional[str] = None,
+    user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER)),
+):
+    tid = _tenant_scope(user)
+    db = get_db()
+    query = {'tenant_id': tid}
+    if department:
+        query['department'] = department
+    if office:
+        query['office'] = office
+    if status:
+        query['status'] = status
+    
+    items = await db.employees.find(query).sort('first_name', 1).to_list(2000)
+    return [strip_internal(i) for i in items]
+
+
+# =================== PERFORMANCE ===================
+@api.get('/goals')
+async def list_goals(user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    uid = user['id']
+    if user['role'] == ROLE_ADMIN or user['role'] == ROLE_SUPER:
+        items = await db.goals.find({'tenant_id': tid}).sort('created_at', -1).to_list(200)
+    else:
+        emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+        if emp:
+            items = await db.goals.find({'employee_id': emp['id']}).sort('created_at', -1).to_list(200)
+        else:
+            items = []
+    return [strip_internal(i) for i in items]
+
+@api.post('/goals')
+async def create_goal(payload: GoalCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    goal = Goal(tenant_id=tid, employee_id=payload.employee_id, title=payload.title, description=payload.description, target_date=payload.target_date, created_by=user.get('name'))
+    await db.goals.insert_one(goal.dict())
+    return goal.dict()
+
+@api.patch('/goals/{goal_id}')
+async def update_goal(goal_id: str, payload: GoalUpdate, user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    goal = await db.goals.find_one({'id': goal_id, 'tenant_id': tid})
+    if not goal:
+        raise HTTPException(status_code=404, detail='Goal not found')
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    await db.goals.update_one({'id': goal_id}, {'$set': update})
+    return strip_internal(await db.goals.find_one({'id': goal_id}))
+
+
+# =================== PERFORMANCE REVIEWS ===================
+@api.get('/performance-reviews')
+async def list_performance_reviews(user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    if user['role'] == ROLE_ADMIN or user['role'] == ROLE_SUPER:
+        items = await db.performance_reviews.find({'tenant_id': tid}).sort('created_at', -1).to_list(200)
+    else:
+        emp = await db.employees.find_one({'user_id': user['id'], 'tenant_id': tid})
+        if emp:
+            items = await db.performance_reviews.find({'employee_id': emp['id']}).sort('created_at', -1).to_list(200)
+        else:
+            items = []
+    return [strip_internal(i) for i in items]
+
+@api.post('/performance-reviews')
+async def create_performance_review(payload: PerformanceReviewCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    review = PerformanceReview(tenant_id=tid, employee_id=payload.employee_id, reviewer_id=user['id'], review_period=payload.review_period, rating=payload.rating or 0, strengths=payload.strengths, weaknesses=payload.weaknesses, comments=payload.comments)
+    await db.performance_reviews.insert_one(review.dict())
+    return review.dict()
+
+
+# =================== TIME TRACKING ===================
+@api.get('/time-entries')
+async def list_time_entries(date: Optional[str] = None, user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    uid = user['id']
+    
+    query = {'tenant_id': tid}
+    if user['role'] != ROLE_ADMIN and user['role'] != ROLE_SUPER:
+        emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+        if emp:
+            query['employee_id'] = emp['id']
+        else:
+            query['employee_id'] = '__none__'
+    if date:
+        query['date'] = date
+    
+    items = await db.time_entries.find(query).sort('date', -1).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/time-entries')
+async def create_time_entry(payload: TimeEntryCreate, user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    uid = user['id']
+    
+    emp = await db.employees.find_one({'user_id': uid, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee profile not found')
+    
+    entry = TimeEntry(tenant_id=tid, employee_id=emp['id'], date=payload.date, task_name=payload.task_name, description=payload.description, hours=payload.hours)
+    await db.time_entries.insert_one(entry.dict())
+    return entry.dict()
+
+
+# =================== COMPANY EVENTS ===================
+@api.get('/company-events')
+async def list_company_events(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.company_events.find({'tenant_id': tid}).sort('event_date', -1).to_list(100)
+    return [strip_internal(i) for i in items]
+
+@api.post('/company-events')
+async def create_company_event(payload: CompanyEventCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    event = CompanyEvent(tenant_id=tid, title=payload.title, description=payload.description, event_date=payload.event_date, event_type=payload.event_type, is_recurring=payload.is_recurring or False)
+    await db.company_events.insert_one(event.dict())
+    
+    employees = await db.employees.find({'tenant_id': tid, 'status': 'Active'}).to_list(500)
+    for emp in employees:
+        await db.notifications.insert_one({
+            'id': str(uuid.uuid4()),
+            'tenant_id': tid,
+            'recipient_id': emp.get('user_id'),
+            'type': 'company_event',
+            'title': f'New Event: {payload.title}',
+            'message': f'Event on {payload.event_date}: {payload.title}',
+            'read': False,
+            'created_at': datetime.utcnow(),
+        })
+    
+    return event.dict()
+
+
+# =================== DASHBOARD SUMMARY ===================
+@api.get('/dashboard/summary')
+async def get_dashboard_summary(user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    
+    total_emp = await db.employees.count_documents({'tenant_id': tid})
+    active_emp = await db.employees.count_documents({'tenant_id': tid, 'status': 'Active'})
+    on_leave = await db.employees.count_documents({'tenant_id': tid, 'status': 'On Leave'})
+    
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    present_today = await db.attendance.count_documents({'tenant_id': tid, 'date': today, 'status': 'Present'})
+    
+    pending_to = await db.time_off_requests.count_documents({'tenant_id': tid, 'status': 'Pending'})
+    
+    upcoming_events = await db.company_events.find({'tenant_id': tid, 'event_date': {'$gte': today}}).sort('event_date', 1).limit(5).to_list(100)
+    
+    pending_complaints = await db.complaints.count_documents({'tenant_id': tid, 'status': 'Pending'})
+    
+    return {
+        'total_employees': total_emp,
+        'active_employees': active_emp,
+        'on_leave': on_leave,
+        'present_today': present_today,
+        'pending_timeoff': pending_to,
+        'pending_complaints': pending_complaints,
+        'upcoming_events': [strip_internal(e) for e in upcoming_events],
+    }
 
 
 app.include_router(api)

@@ -816,4 +816,96 @@ ALL_PERMISSIONS = [
     {'key': 'reports.read', 'label': 'View Reports', 'group': 'Reports'},
     {'key': 'settings.manage', 'label': 'Manage Settings', 'group': 'Settings'},
     {'key': 'employees.read.self', 'label': 'View Own Profile', 'group': 'Employees'},
+    {'key': 'performance.read', 'label': 'View Performance', 'group': 'Performance'},
+    {'key': 'performance.manage', 'label': 'Manage Performance', 'group': 'Performance'},
+    {'key': 'timetracking.read', 'label': 'View Time Tracking', 'group': 'Time Tracking'},
+    {'key': 'timetracking.manage', 'label': 'Manage Time Tracking', 'group': 'Time Tracking'},
 ]
+
+# =================== PERFORMANCE MODELS ===================
+class Goal(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    title: str
+    description: Optional[str] = None
+    target_date: Optional[str] = None
+    progress: int = 0
+    status: str = 'Not Started'
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class GoalCreate(BaseModel):
+    employee_id: str
+    title: str
+    description: Optional[str] = None
+    target_date: Optional[str] = None
+
+class GoalUpdate(BaseModel):
+    progress: Optional[int] = None
+    status: Optional[str] = None
+
+class PerformanceReview(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    reviewer_id: str
+    review_period: str
+    rating: float = 0
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    comments: Optional[str] = None
+    status: str = 'Pending'
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PerformanceReviewCreate(BaseModel):
+    employee_id: str
+    review_period: str
+    rating: Optional[float] = 0
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    comments: Optional[str] = None
+
+# =================== TIME TRACKING MODELS ===================
+class TimeEntry(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    employee_id: str
+    date: str
+    task_name: str
+    description: Optional[str] = None
+    hours: float = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TimeEntryCreate(BaseModel):
+    date: str
+    task_name: str
+    description: Optional[str] = None
+    hours: float
+
+# =================== COMPANY EVENTS MODELS ===================
+class CompanyEvent(BaseModel):
+    id: str = Field(default_factory=_id)
+    tenant_id: str
+    title: str
+    description: Optional[str] = None
+    event_date: str
+    event_type: str
+    is_recurring: bool = False
+    notify_employees: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CompanyEventCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    event_date: str
+    event_type: str
+    is_recurring: Optional[bool] = False
+
+# =================== REPORT FILTERS ===================
+class ReportFilter(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    department: Optional[str] = None
+    office: Optional[str] = None
+    export_format: Optional[str] = 'json'
