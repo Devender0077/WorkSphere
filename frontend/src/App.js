@@ -28,13 +28,18 @@ import MyProfilePage from '@/pages/MyProfilePage';
 import ChecklistPage from '@/pages/ChecklistPage';
 import { TodosPage, OnboardingChecklistPage, OffboardingChecklistPage, ChecklistSettingPage } from '@/pages/ChecklistPages';
 import { AttendanceDailyPage, AttendanceReportsPage } from '@/pages/AttendancePages';
+import AttendanceCalendarPage from '@/pages/AttendanceCalendarPage';
 import { PayrollRunsPage, PayslipsPage, TimeOffBalancePage } from '@/pages/PayrollPages';
 import { PerformanceReviewsPage, GoalsPage } from '@/pages/PerformancePages';
-import { JobsPage, ApplicantsPage } from '@/pages/RecruitmentPages';
-import { HelpCenterPage, SettingsPage, ReportsPage } from '@/pages/HelpAndSettings';
+import { JobsPage, CandidatesPage, RecruitmentSettingsPage } from '@/pages/RecruitmentPages';
+import { HelpCenterPage, ReportsPage } from '@/pages/HelpAndSettings';
+import SettingsPage from '@/pages/SettingsPage';
 import BiometricSettingsPage from '@/pages/BiometricSettingsPage';
 import DocumentsPage from '@/pages/DocumentsPage';
 import NewsPage from '@/pages/NewsPage';
+import MessagesPage from '@/pages/MessagesPage';
+import { SubscriptionPlansPage, CheckoutPage, InvoicePage } from '@/pages/BillingPages';
+import { ESignInboxPage, ESignTemplatesPage, ESignBuilderPage, ESignSignPage } from '@/pages/ESignPages';
 
 const App = () => {
   return (
@@ -74,6 +79,7 @@ const App = () => {
                 <Route path="/checklist/team-tasks" element={<ChecklistPage title="Team Tasks" description="Manage tasks across your team." />} />
 
                 <Route path="/attendance/daily" element={<AttendanceDailyPage />} />
+                <Route path="/attendance/calendar" element={<AttendanceCalendarPage />} />
                 <Route path="/attendance/reports" element={<AttendanceReportsPage />} />
                 <Route path="/attendance/biometric" element={<BiometricSettingsPage />} />
 
@@ -84,7 +90,20 @@ const App = () => {
                 <Route path="/performance/goals" element={<GoalsPage />} />
 
                 <Route path="/recruitment/jobs" element={<JobsPage />} />
-                <Route path="/recruitment/applicants" element={<ApplicantsPage />} />
+                <Route path="/recruitment/candidates" element={<CandidatesPage />} />
+                <Route path="/recruitment/applicants" element={<CandidatesPage />} />
+                <Route path="/recruitment/settings" element={<RecruitmentSettingsPage />} />
+
+                <Route path="/messages" element={<MessagesPage />} />
+
+                <Route path="/esign" element={<ESignInboxPage />} />
+                <Route path="/esign/templates" element={<ESignTemplatesPage />} />
+                <Route path="/esign/builder/:id" element={<ESignBuilderPage />} />
+                <Route path="/esign/sign/:id" element={<ESignSignPage />} />
+
+                <Route path="/billing" element={<SubscriptionPlansPage />} />
+                <Route path="/billing/checkout/:plan" element={<CheckoutPage />} />
+                <Route path="/billing/invoice/:id" element={<InvoicePage />} />
 
                 <Route path="/documents" element={<DocumentsPage />} />
                 <Route path="/news" element={<NewsPage />} />

@@ -14,8 +14,11 @@ export const getMenu = (role) => {
           ],
         },
         { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
+        { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
         { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
         { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
+        { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
+        { key: 'billing', label: 'Subscription', icon: 'credit-card', to: '/billing' },
         { key: 'reports', label: 'Reports', icon: 'trending-up', to: '/reports' },
       ],
       bottom: [
@@ -53,6 +56,7 @@ export const getMenu = (role) => {
         {
           key: 'attendance', label: 'Attendance', icon: 'calendar', children: [
             { key: 'daily', label: 'Daily Log', to: '/attendance/daily' },
+            { key: 'calendar', label: 'Calendar', to: '/attendance/calendar' },
             { key: 'reports', label: 'Reports', to: '/attendance/reports' },
             { key: 'biometric', label: 'Biometric & Face ID', to: '/attendance/biometric' },
           ],
@@ -71,12 +75,16 @@ export const getMenu = (role) => {
         },
         {
           key: 'recruitment', label: 'Recruitment', icon: 'briefcase', children: [
-            { key: 'jobs', label: 'Open Jobs', to: '/recruitment/jobs' },
-            { key: 'applicants', label: 'Applicants', to: '/recruitment/applicants' },
+            { key: 'jobs', label: 'Jobs', to: '/recruitment/jobs' },
+            { key: 'candidates', label: 'Candidates', to: '/recruitment/candidates' },
+            { key: 'rec-settings', label: 'Settings', to: '/recruitment/settings' },
           ],
         },
+        { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
+        { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
         { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
         { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
+        { key: 'billing', label: 'Subscription', icon: 'credit-card', to: '/billing' },
         { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
       ],
       bottom: [
@@ -93,7 +101,14 @@ export const getMenu = (role) => {
       { key: 'profile', label: 'My Profile', icon: 'user', to: '/my-profile' },
       { key: 'time-off', label: 'My Time Off', icon: 'clock', to: '/time-off/requests' },
       { key: 'payslip', label: 'My Payslips', icon: 'wallet', to: '/payroll/slips' },
-      { key: 'attendance', label: 'My Attendance', icon: 'calendar', to: '/attendance/daily' },
+      {
+        key: 'attendance', label: 'My Attendance', icon: 'calendar', children: [
+          { key: 'daily', label: 'Daily Log', to: '/attendance/daily' },
+          { key: 'calendar', label: 'Calendar', to: '/attendance/calendar' },
+        ],
+      },
+      { key: 'messages', label: 'Messages', icon: 'message', to: '/messages' },
+      { key: 'esign', label: 'E-Sign', icon: 'file-signature', to: '/esign' },
       { key: 'directory', label: 'Directory', icon: 'users', to: '/employees/directory' },
       { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
       { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
