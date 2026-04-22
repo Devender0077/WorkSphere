@@ -449,21 +449,31 @@ class Attendance(BaseModel):
     date: str
     clock_in: Optional[str] = None
     clock_out: Optional[str] = None
+    clock_in_ip: Optional[str] = None
+    clock_out_ip: Optional[str] = None
+    clock_in_device: Optional[str] = None
+    clock_out_device: Optional[str] = None
+    clock_in_browser: Optional[str] = None
+    clock_out_browser: Optional[str] = None
+    clock_in_os: Optional[str] = None
+    clock_out_os: Optional[str] = None
+    clock_in_location: Optional[Dict[str, float]] = None
+    clock_out_location: Optional[Dict[str, float]] = None
+    clock_in_location_address: Optional[str] = None
+    clock_out_location_address: Optional[str] = None
+    work_summary: Optional[str] = None
     hours_worked: float = 0
     status: str = 'Present'
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class AttendanceCreate(BaseModel):
+class AttendanceClockIn(BaseModel):
     employee_id: str
-    date: str
-    clock_in: Optional[str] = None
-    clock_out: Optional[str] = None
-    status: Optional[str] = 'Present'
+    device_info: Optional[Dict[str, str]] = None
+    location: Optional[Dict[str, float]] = None
+    location_address: Optional[str] = None
 
-class AttendanceUpdate(BaseModel):
-    clock_in: Optional[str] = None
-    clock_out: Optional[str] = None
-    status: Optional[str] = None
+class AttendanceClockOut(BaseModel):
+    work_summary: str
 
 class Training(BaseModel):
     id: str = Field(default_factory=_id)

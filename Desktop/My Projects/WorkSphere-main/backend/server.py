@@ -36,7 +36,7 @@ from models import (
     Document, DocumentCreate, DocumentUpdate,
     Job, JobCreate, JobUpdate,
     Candidate, CandidateCreate, CandidateUpdate,
-    Attendance, AttendanceCreate, AttendanceUpdate,
+    Attendance, AttendanceClockIn, AttendanceUpdate,
     Training, TrainingCreate, TrainingUpdate,
     Payslip, PayslipCreate,
     Currency, CurrencyCreate,
@@ -1698,7 +1698,7 @@ async def ess_dashboard(user=Depends(get_current_user)):
     }
 
 @api.post('/ess/clock-in')
-async def ess_clock_in(user=Depends(get_current_user)):
+async def ess_clock_in(request: Request, payload: Optional[AttendanceClockIn] = None, user=Depends(get_current_user)):
     db = get_db()
     uid = user['id']
     tid = user.get('tenant_id')
@@ -1714,12 +1714,51 @@ async def ess_clock_in(user=Depends(get_current_user)):
     if existing and existing.get('clock_in'):
         raise HTTPException(status_code=400, detail='Already clocked in today')
     
-    att = Attendance(tenant_id=tid, employee_id=emp['id'], employee_name=f"{emp['first_name']} {emp['last_name']}", date=today, clock_in=now, status='Present')
-    await db.attendance.insert_one(att.dict())
-    return att.dict()
+    client_host = request.client.host if request.client else None
+    user_agent = request.headers.get('user-agent', 'Unknown')
+    device = 'Mobile' if 'Mobile' in user_agent else ('Desktop' if 'Mozilla' in user_agent else 'Unknown')
+    browser = 'Chrome' if 'Chrome' in user_agent else ('Safari' if 'Safari' in user_agent else ('Firefox' if 'Firefox' in user_agent else 'Other'))
+    os_type = 'iOS' if 'iPhone' in user_agent or 'iPad' in user_agent else ('Android' if 'Android' in user_agent else ('Windows' if 'Windows' in user_agent else ('Mac' if 'Mac' in user_agent else 'Linux')))
+
+    location_data = None
+    location_address = None
+    if payload and payload.location:
+        location_data = payload.location
+    if payload and payload.location_address:
+        location_address = payload.location_address
+    
+    att_data = {
+        'tenant_id': tid,
+        'employee_id': emp['id'],
+        'employee_name': f"{emp['first_name']} {emp['last_name']}",
+        'date': today,
+        'clock_in': now,
+        'clock_in_ip': client_host,
+        'clock_in_device': device,
+        'clock_in_browser': browser,
+        'clock_in_os': os_type,
+        'clock_in_location': location_data,
+        'clock_in_location_address': location_address,
+        'status': 'Present',
+        'created_at': datetime.utcnow(),
+    }
+    
+    await db.attendance.insert_one(att_data)
+    
+    await db.audit_log.insert_one({
+        'id': str(uuid.uuid4()),
+        'actor_id': uid,
+        'actor_name': user.get('name'),
+        'action': 'clock_in',
+        'target_tenant_id': tid,
+        'details': {'device': device, 'browser': browser, 'os': os_type, 'ip': client_host},
+        'created_at': datetime.utcnow(),
+    })
+    
+    return {'ok': True, 'message': 'Clocked in successfully', 'time': now, 'device': device}
 
 @api.post('/ess/clock-out')
-async def ess_clock_out(user=Depends(get_current_user)):
+async def ess_clock_out(payload: AttendanceClockOut, user=Depends(get_current_user)):
     db = get_db()
     uid = user['id']
     tid = user.get('tenant_id')
@@ -1738,9 +1777,34 @@ async def ess_clock_out(user=Depends(get_current_user)):
     if existing.get('clock_out'):
         raise HTTPException(status_code=400, detail='Already clocked out today')
     
-    await db.attendance.update_one({'id': existing['id']}, {'$set': {'clock_out': now}})
+    work_summary = payload.work_summary if payload.work_summary else ''
+    
+    clock_in_time = existing.get('clock_in', '00:00')
+    try:
+        in_h, in_m = map(int, clock_in_time.split(':'))
+        out_h, out_m = map(int, now.split(':'))
+        hours = (out_h * 60 + out_m - in_h * 60 - in_m) / 60.0
+    except:
+        hours = 0
+    
+    await db.attendance.update_one({'id': existing['id']}, {'$set': {
+        'clock_out': now,
+        'work_summary': work_summary,
+        'hours_worked': round(hours, 2)
+    }})
+    
+    await db.audit_log.insert_one({
+        'id': str(uuid.uuid4()),
+        'actor_id': uid,
+        'actor_name': user.get('name'),
+        'action': 'clock_out',
+        'target_tenant_id': tid,
+        'details': {'hours_worked': round(hours, 2), 'work_summary': work_summary[:200] if work_summary else None},
+        'created_at': datetime.utcnow(),
+    })
+    
     updated = await db.attendance.find_one({'id': existing['id']})
-    return strip_internal(updated)
+    return {'ok': True, 'message': 'Clocked out successfully', 'hours_worked': round(hours, 2)}
 
 
 app.include_router(api)
