@@ -8,6 +8,12 @@ import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import EmployeesPage from '@/pages/EmployeesPage';
 import EmployeeDetailPage from '@/pages/EmployeeDetailPage';
+import RolesPage from '@/pages/RolesPage';
+import TenantsPage from '@/pages/TenantsPage';
+import TimeOffPage from '@/pages/TimeOffPage';
+import DirectoryPage from '@/pages/DirectoryPage';
+import OrgChartPage from '@/pages/OrgChartPage';
+import MyProfilePage from '@/pages/MyProfilePage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 const App = () => {
@@ -20,14 +26,17 @@ const App = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/tenants" element={<TenantsPage />} />
                 <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/employees/directory" element={<DirectoryPage />} />
+                <Route path="/employees/org-chart" element={<OrgChartPage />} />
                 <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-                <Route path="/employees/directory" element={<PlaceholderPage title="Directory" description="Browse all employees in a directory view." />} />
-                <Route path="/employees/org-chart" element={<PlaceholderPage title="ORG Chart" description="Visualize your organization structure." />} />
+                <Route path="/my-profile" element={<MyProfilePage />} />
+                <Route path="/roles" element={<RolesPage />} />
+                <Route path="/time-off/requests" element={<TimeOffPage />} />
+                <Route path="/time-off/balance" element={<PlaceholderPage title="Leave Balance" description="Your available time-off balances." />} />
                 <Route path="/checklist/my-tasks" element={<PlaceholderPage title="My Tasks" description="Track your personal HR tasks." />} />
                 <Route path="/checklist/team-tasks" element={<PlaceholderPage title="Team Tasks" description="Manage tasks across your team." />} />
-                <Route path="/time-off/requests" element={<PlaceholderPage title="Time Off Requests" description="Review and approve time-off requests." />} />
-                <Route path="/time-off/balance" element={<PlaceholderPage title="Time Off Balance" description="Check leave balances by employee." />} />
                 <Route path="/attendance/daily" element={<PlaceholderPage title="Daily Log" description="Daily attendance tracking." />} />
                 <Route path="/attendance/reports" element={<PlaceholderPage title="Attendance Reports" description="Generate detailed reports." />} />
                 <Route path="/payroll/runs" element={<PlaceholderPage title="Payroll Runs" description="Run and review payroll cycles." />} />
@@ -36,6 +45,7 @@ const App = () => {
                 <Route path="/performance/goals" element={<PlaceholderPage title="Goals" description="Track goals and OKRs." />} />
                 <Route path="/recruitment/jobs" element={<PlaceholderPage title="Open Jobs" description="Manage open positions." />} />
                 <Route path="/recruitment/applicants" element={<PlaceholderPage title="Applicants" description="Review candidates and applicants." />} />
+                <Route path="/reports" element={<PlaceholderPage title="Platform Reports" description="Cross-tenant analytics and insights." />} />
                 <Route path="/help" element={<PlaceholderPage title="Help Center" description="Get help and support." />} />
                 <Route path="/setting" element={<PlaceholderPage title="Settings" description="Configure your HR workspace." />} />
               </Route>

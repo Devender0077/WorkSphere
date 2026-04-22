@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { useAuth } from '@/contexts/AuthContext';
 
 const DashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) return <Navigate to="/login" replace />;
 

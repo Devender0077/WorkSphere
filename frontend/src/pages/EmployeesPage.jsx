@@ -1,11 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, Download, Plus, Search, Target, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { EMPLOYEES, OFFICES, JOB_TITLES, STATUSES, STATUS_COLORS } from '@/data/mock';
+import { Check, ChevronDown, Download, Plus, Search, Target, ChevronLeft, ChevronRight, MoreHorizontal, Trash2 } from 'lucide-react';
+import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { STATUS_COLORS } from '@/data/mock';
 import { cn } from '@/lib/utils';
 import AddEmployeeSheet from '@/components/employees/AddEmployeeSheet';
 
-const Dropdown = ({ label, options, value, onChange }) => {
+const OFFICES = ['All Offices', 'Unpixel Office', 'Unpixel Studio', 'Main Office'];
+const JOB_TITLES = ['All Job Titles', 'UI UX Designer', 'Graphic Designer', 'Finance', 'Project Manager', 'Creative Director', 'Lead Designer', 'IT Support', '3D Designer', 'Backend Engineer', 'Product Manager'];
+const STATUSES = ['All Status', 'Active', 'On Boarding', 'Probation', 'On Leave'];
+
+const Dropdown = ({ options, value, onChange }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
@@ -16,15 +22,15 @@ const Dropdown = ({ label, options, value, onChange }) => {
           open && 'ring-2 ring-primary/20 border-primary/40'
         )}
       >
-        <span className="truncate">{value || label}</span>
+        <span className="truncate">{value || options[0]}</span>
         <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-[220px] rounded-2xl border border-border bg-card shadow-lg py-2">
+          <div className="absolute right-0 z-20 mt-2 w-[220px] rounded-2xl border border-border bg-card shadow-lg py-2 max-h-72 overflow-auto">
             {options.map((opt) => {
-              const selected = value === opt || (!value && opt === options[0]);
+              const selected = value === opt;
               return (
                 <button
                   key={opt}
@@ -44,10 +50,11 @@ const Dropdown = ({ label, options, value, onChange }) => {
 };
 
 const StatusBadge = ({ status }) => (
-  <span className={cn('inline-flex items-center rounded-md px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide', STATUS_COLORS[status])}>{status}</span>
+  <span className={cn('inline-flex items-center rounded-md px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide', STATUS_COLORS[status] || '')}>{status}</span>
 );
 
 const EmployeesPage = () => {
+  const { user, can } = useAuth();
   const [search, setSearch] = useState('');
   const [office, setOffice] = useState(OFFICES[0]);
   const [job, setJob] = useState(JOB_TITLES[0]);
@@ -55,44 +62,62 @@ const EmployeesPage = () => {
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState([]);
-  const [localList, setLocalList] = useState(EMPLOYEES);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = useMemo(() => {
-    return localList.filter((e) => {
-      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (office !== OFFICES[0] && e.office !== office) return false;
-      if (job !== JOB_TITLES[0] && e.title !== job) return false;
-      if (status !== STATUSES[0] && e.status !== status) return false;
-      return true;
-    });
-  }, [localList, search, office, job, status]);
+  const canCreate = can('employees.create');
+  const canDelete = can('employees.delete');
+
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (search) params.search = search;
+      if (office && office !== OFFICES[0]) params.office = office;
+      if (job && job !== JOB_TITLES[0]) params.title = job;
+      if (status && status !== STATUSES[0]) params.status = status;
+      const { data } = await api.get('/employees', { params });
+      setList(data);
+    } catch (e) { /* noop */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchList(); /* eslint-disable-next-line */ }, [office, job, status]);
+
+  // debounce search
+  useEffect(() => {
+    const t = setTimeout(fetchList, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [search]);
+
+  const filtered = list;
 
   const toggleAll = () => {
     if (selected.length === filtered.length) setSelected([]);
     else setSelected(filtered.map((e) => e.id));
   };
-  const toggleOne = (id) => {
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggleOne = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const handleCreate = async (data) => {
+    try {
+      await api.post('/employees', {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        title: data.title || 'UI UX Designer',
+        join_date: data.joinDate,
+      });
+      setAddOpen(false);
+      fetchList();
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to create');
+    }
   };
 
-  const handleCreate = (data) => {
-    const newEmp = {
-      id: `E${Math.floor(Math.random() * 9000 + 1000)}`,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      name: `${data.firstName} ${data.lastName}`,
-      email: data.email,
-      handle: '@Pristiacandra',
-      title: data.title || 'UI UX Designer',
-      department: 'Team Product',
-      office: 'Unpixel Office',
-      status: 'On Boarding',
-      account: 'Need Invitation',
-      avatar: '',
-      joinDate: data.joinDate,
-    };
-    setLocalList([newEmp, ...localList]);
-    setAddOpen(false);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this employee?')) return;
+    try { await api.delete(`/employees/${id}`); fetchList(); } catch (e) {}
   };
 
   return (
@@ -100,19 +125,22 @@ const EmployeesPage = () => {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-[30px] font-bold text-foreground">Employees</h1>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">Manage your Employee</p>
+          <p className="mt-1 text-[13.5px] text-muted-foreground">
+            {user?.tenant_name ? `Manage employees of ${user.tenant_name}` : 'All employees across tenants'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button className="inline-flex items-center gap-2 h-11 rounded-xl border border-border bg-card px-4 text-[13.5px] font-semibold text-foreground hover:bg-secondary">
             <Download className="h-4 w-4" /> Download
           </button>
-          <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white hover:opacity-90">
-            <Plus className="h-4 w-4" /> Add New
-          </button>
+          {canCreate && (
+            <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-11 rounded-xl bg-[hsl(var(--navy))] px-4 text-[13.5px] font-semibold text-white hover:opacity-90">
+              <Plus className="h-4 w-4" /> Add New
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filters */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-3">
         <div className="relative">
           <input
@@ -125,14 +153,13 @@ const EmployeesPage = () => {
             <Search className="h-4 w-4" />
           </button>
         </div>
-        <Dropdown label="All Offices" options={OFFICES} value={office} onChange={setOffice} />
-        <Dropdown label="All Job Titles" options={JOB_TITLES} value={job} onChange={setJob} />
-        <Dropdown label="All Status" options={STATUSES} value={status} onChange={setStatus} />
+        <Dropdown options={OFFICES} value={office} onChange={setOffice} />
+        <Dropdown options={JOB_TITLES} value={job} onChange={setJob} />
+        <Dropdown options={STATUSES} value={status} onChange={setStatus} />
       </div>
 
-      {/* Table */}
       <div className="mt-5 rounded-2xl border border-border bg-card overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[980px]">
+        <table className="w-full text-[13px] min-w-[1050px]">
           <thead>
             <tr className="text-primary text-left border-b border-border">
               <th className="p-4 w-10">
@@ -149,7 +176,11 @@ const EmployeesPage = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map((e) => (
+            {loading ? (
+              <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">Loading…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">No employees match your filters.</td></tr>
+            ) : filtered.map((e) => (
               <tr key={e.id} className="hover:bg-secondary/40">
                 <td className="p-4">
                   <input type="checkbox" className="h-4 w-4 rounded border-border accent-primary" checked={selected.includes(e.id)} onChange={() => toggleOne(e.id)} />
@@ -159,41 +190,32 @@ const EmployeesPage = () => {
                     {e.avatar ? (
                       <img src={e.avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
                     ) : (
-                      <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 grid place-items-center text-[12px] font-bold">{e.firstName[0]}{e.lastName[0]}</div>
+                      <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 grid place-items-center text-[12px] font-bold">{(e.first_name?.[0]||'')+(e.last_name?.[0]||'')}</div>
                     )}
                     <div>
-                      <div className="font-semibold text-foreground group-hover:text-primary">{e.name}</div>
+                      <div className="font-semibold text-foreground group-hover:text-primary">{e.first_name} {e.last_name}</div>
                       <div className="text-[12px] text-muted-foreground">{e.email}</div>
                     </div>
                   </Link>
                 </td>
                 <td className="p-4 text-foreground">{e.title}</td>
-                <td className="p-4 text-foreground">{e.handle}</td>
+                <td className="p-4 text-foreground">{e.line_manager || e.handle}</td>
                 <td className="p-4 text-foreground">{e.department}</td>
                 <td className="p-4 text-foreground">{e.office}</td>
-                <td className="p-4">
-                  <div className="inline-flex items-center gap-1">
-                    <StatusBadge status={e.status} />
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </td>
+                <td className="p-4"><div className="inline-flex items-center gap-1"><StatusBadge status={e.status} /><ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /></div></td>
                 <td className="p-4 text-foreground">{e.account}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-1.5">
-                    <button className="h-8 w-8 grid place-items-center rounded-lg bg-primary text-white hover:opacity-90"><Target className="h-4 w-4" /></button>
-                    <button className="h-8 w-1.5 rounded bg-blue-500" />
+                    <Link to={`/employees/${e.id}`} className="h-8 w-8 grid place-items-center rounded-lg bg-primary text-white hover:opacity-90"><Target className="h-4 w-4" /></Link>
+                    {canDelete && <button onClick={() => handleDelete(e.id)} className="h-8 w-8 grid place-items-center rounded-lg bg-rose-500 text-white hover:opacity-90"><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={9} className="p-10 text-center text-muted-foreground text-[13px]">No employees match your filters.</td></tr>
-            )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="mt-4 flex items-center gap-2">
         <button onClick={() => setPage((p) => Math.max(1, p - 1))} className="h-9 w-9 rounded-lg border border-border bg-card grid place-items-center text-muted-foreground hover:bg-secondary"><ChevronLeft className="h-4 w-4" /></button>
         {[1, 2, 3].map((p) => (

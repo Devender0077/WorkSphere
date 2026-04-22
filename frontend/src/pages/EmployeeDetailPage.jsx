@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Link, useParams, Navigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, Mail, Phone, Globe, Pencil } from 'lucide-react';
-import { EMPLOYEES, STATUS_COLORS } from '@/data/mock';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams, Navigate, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronDown, ChevronRight, Mail, Phone, Globe, Pencil, Loader2 } from 'lucide-react';
+import api from '@/lib/api';
+import { STATUS_COLORS } from '@/data/mock';
 import { cn } from '@/lib/utils';
 
 const TABS = ['General', 'Job', 'Payroll', 'Documents', 'Setting'];
@@ -25,50 +26,61 @@ const Section = ({ title, children }) => (
 
 const EmployeeDetailPage = () => {
   const { id } = useParams();
-  const emp = EMPLOYEES.find((e) => e.id === id);
+  const navigate = useNavigate();
+  const [emp, setEmp] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState('General');
 
-  if (!emp) return <Navigate to="/employees" replace />;
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get(`/employees/${id}`);
+        setEmp(data);
+      } catch (e) {
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  if (loading) return <div className="min-h-[60vh] grid place-items-center"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>;
+  if (notFound || !emp) return <Navigate to="/employees" replace />;
 
   return (
     <div>
-      <Link to="/employees" className="inline-flex items-center gap-2 text-foreground hover:text-primary mb-4">
+      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-foreground hover:text-primary mb-4">
         <ArrowLeft className="h-4 w-4" />
         <h1 className="text-[24px] font-bold">Detail Employee</h1>
-      </Link>
+      </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
-        {/* Left: profile card */}
         <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex flex-col items-center text-center">
             {emp.avatar ? (
               <img src={emp.avatar} alt="" className="h-28 w-28 rounded-full object-cover" />
             ) : (
-              <div className="h-28 w-28 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[28px] font-bold">{emp.firstName[0]}{emp.lastName[0]}</div>
+              <div className="h-28 w-28 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center text-[28px] font-bold">{(emp.first_name?.[0]||'')+(emp.last_name?.[0]||'')}</div>
             )}
-            <h2 className="mt-4 text-[22px] font-bold text-foreground">{emp.name}</h2>
+            <h2 className="mt-4 text-[22px] font-bold text-foreground">{emp.first_name} {emp.last_name}</h2>
             <p className="text-[13px] text-muted-foreground">{emp.title}</p>
-            <button className={cn('mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-bold uppercase', STATUS_COLORS[emp.status])}>
-              {emp.status}
-              <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            <button className={cn('mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-bold uppercase', STATUS_COLORS[emp.status] || '')}>
+              {emp.status} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
             </button>
           </div>
-
           <div className="my-6 border-t border-border" />
-
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-[13.5px] text-foreground"><Mail className="h-4 w-4 text-muted-foreground" />{emp.email}</div>
-            <div className="flex items-center gap-3 text-[13.5px] text-foreground"><Phone className="h-4 w-4 text-muted-foreground" />{emp.phone}</div>
+            <div className="flex items-center gap-3 text-[13.5px] text-foreground"><Phone className="h-4 w-4 text-muted-foreground" />{emp.phone || '-'}</div>
             <div className="flex items-center gap-3 text-[13.5px] text-foreground"><Globe className="h-4 w-4 text-muted-foreground" />GMT +07:00</div>
           </div>
-
           <div className="my-6 border-t border-border" />
-
           <div className="space-y-4">
             {[
               { label: 'Department', value: emp.department },
               { label: 'Office', value: emp.office },
-              { label: 'Line Manager', value: 'Skylar Calzoni', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face' },
+              { label: 'Line Manager', value: emp.line_manager || 'Skylar Calzoni', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face' },
             ].map((it) => (
               <button key={it.label} className="w-full flex items-center justify-between text-left">
                 <div>
@@ -82,25 +94,16 @@ const EmployeeDetailPage = () => {
               </button>
             ))}
           </div>
-
           <button className="mt-6 w-full h-11 rounded-xl bg-[hsl(var(--navy))] text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90">
             Action <ChevronDown className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Right: tabs and details */}
         <div className="space-y-5">
           <div className="rounded-2xl border border-border bg-card px-4">
             <div className="flex gap-6 overflow-x-auto">
               {TABS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    'relative py-4 text-[13.5px] font-semibold transition-colors',
-                    tab === t ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
+                <button key={t} onClick={() => setTab(t)} className={cn('relative py-4 text-[13.5px] font-semibold transition-colors', tab === t ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
                   {t}
                   {tab === t && <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-primary rounded-full" />}
                 </button>
@@ -112,7 +115,7 @@ const EmployeeDetailPage = () => {
             <>
               <Section title="Personal Info">
                 <div>
-                  <Row label="Full Name" value={`${emp.firstName} ${emp.lastName} Nelson`} />
+                  <Row label="Full Name" value={`${emp.first_name} ${emp.last_name}`} />
                   <Row label="Date of Birth" value={emp.dob} />
                   <Row label="Nationality" value={emp.nationality} />
                   <Row label="Email Address" value={emp.email} />
@@ -126,7 +129,6 @@ const EmployeeDetailPage = () => {
                   <Row label="Phone Number" value={emp.phone} />
                 </div>
               </Section>
-
               <Section title="Address">
                 <div>
                   <Row label="Primary address" value="Banyumanik Street, Central Java. Semarang Indonesia" />
@@ -138,7 +140,6 @@ const EmployeeDetailPage = () => {
                   <Row label="Post Code" value="03125" />
                 </div>
               </Section>
-
               <Section title="Emergency Contact">
                 <div>
                   <Row label="Full Name" value="Albert Jhonson" />
@@ -161,8 +162,8 @@ const EmployeeDetailPage = () => {
               </div>
               <div>
                 <Row label="Employment Type" value="Full-Time" />
-                <Row label="Join Date" value={emp.joinDate} />
-                <Row label="Line Manager" value="Skylar Calzoni" />
+                <Row label="Join Date" value={emp.join_date} />
+                <Row label="Line Manager" value={emp.line_manager || 'Skylar Calzoni'} />
               </div>
             </Section>
           )}
