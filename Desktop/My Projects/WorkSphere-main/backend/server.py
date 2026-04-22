@@ -22,9 +22,23 @@ from auth import (
     get_current_user, require_role, require_permission,
 )
 from models import (
-    Tenant, TenantCreate, User, UserPublic, LoginRequest, LoginResponse,
-    Employee, EmployeeCreate, EmployeeUpdate, Role, RoleCreate, RoleUpdate,
-    TimeOffRequest, TimeOffCreate,
+    Tenant, TenantCreate, TenantUpdate, User, UserPublic, LoginRequest, LoginResponse,
+    UserCreate, UserUpdate,
+    Employee, EmployeeCreate, EmployeeUpdate,
+    Role, RoleCreate, RoleUpdate,
+    TimeOffRequest, TimeOffCreate, TimeOffUpdate,
+    TimeOffType, TimeOffTypeCreate,
+    Department, DepartmentCreate, DepartmentUpdate,
+    Office, OfficeCreate, OfficeUpdate,
+    JobTitle, JobTitleCreate, JobTitleUpdate,
+    WorkSchedule, WorkScheduleCreate, WorkScheduleUpdate,
+    Asset, AssetCreate, AssetUpdate,
+    Document, DocumentCreate, DocumentUpdate,
+    Job, JobCreate, JobUpdate,
+    Candidate, CandidateCreate, CandidateUpdate,
+    Attendance, AttendanceCreate, AttendanceUpdate,
+    Training, TrainingCreate, TrainingUpdate,
+    Payslip, PayslipCreate,
     ROLE_SUPER, ROLE_ADMIN, ROLE_EMP, ROLE_LABELS, ALL_PERMISSIONS,
 )
 from seed import seed_database
@@ -208,7 +222,7 @@ async def list_roles(user=Depends(get_current_user)):
     if user['role'] == ROLE_SUPER:
         query = {}
     else:
-        query = {'$and': [{'key': {'$ne': ROLE_SUPER}}, {'$or': [{'tenant_id': None}, {'tenant_id': user['tenant_id']}]]}
+        query = {'key': {'$ne': ROLE_SUPER}, 'tenant_id': {'$in': [None, user['tenant_id']]}}
     roles = await db.roles.find(query).to_list(200)
     for r in roles:
         user_q = {'role': r['key']}
@@ -1020,10 +1034,10 @@ async def list_work_schedules(user=Depends(get_current_user)):
     return [strip_internal(i) for i in items]
 
 @api.post('/work-schedules')
-async def create_work_schedule(payload: WorkScheduleIn, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER)):
+async def create_work_schedule(payload: WorkScheduleCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
     tid = _tenant_scope(user)
     db = get_db()
-    doc = {'id': str(_uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
+    doc = {'id': str(uuid.uuid4()), 'tenant_id': tid, **payload.dict(), 'created_at': datetime.utcnow()}
     await db.work_schedules.insert_one(doc)
     return strip_internal(doc)
 
@@ -1200,6 +1214,215 @@ async def delete_document(did: str, user=Depends(require_role(ROLE_ADMIN, ROLE_S
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail='Not found')
     return {'ok': True}
+
+
+# =================== ATTENDANCE ===================
+@api.get('/attendance')
+async def list_attendance(date: Optional[str] = None, user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    query = {'tenant_id': tid}
+    if date:
+        query['date'] = date
+    items = await db.attendance.find(query).sort('created_at', -1).to_list(500)
+    return [strip_internal(i) for i in items]
+
+@api.post('/attendance')
+async def create_attendance(payload: AttendanceCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    emp = await db.employees.find_one({'id': payload.employee_id, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee not found')
+    att = Attendance(
+        tenant_id=tid,
+        employee_id=payload.employee_id,
+        employee_name=f"{emp['first_name']} {emp['last_name']}",
+        date=payload.date,
+        clock_in=payload.clock_in,
+        clock_out=payload.clock_out,
+        status=payload.status or 'Present',
+    )
+    await db.attendance.insert_one(att.dict())
+    return att.dict()
+
+@api.patch('/attendance/{att_id}')
+async def update_attendance(att_id: str, payload: AttendanceUpdate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.attendance.update_one({'id': att_id, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Attendance not found')
+    att = await db.attendance.find_one({'id': att_id})
+    return strip_internal(att)
+
+
+# =================== TRAINING ===================
+@api.get('/training')
+async def list_training(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.training.find({'tenant_id': tid}).sort('created_at', -1).to_list(200)
+    return [strip_internal(i) for i in items]
+
+@api.post('/training')
+async def create_training(payload: TrainingCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    train = Training(
+        tenant_id=tid,
+        name=payload.name,
+        type=payload.type,
+        trainer=payload.trainer,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        location=payload.location,
+    )
+    await db.training.insert_one(train.dict())
+    return train.dict()
+
+@api.patch('/training/{train_id}')
+async def update_training(train_id: str, payload: TrainingUpdate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.training.update_one({'id': train_id, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Training not found')
+    train = await db.training.find_one({'id': train_id})
+    return strip_internal(train)
+
+@api.delete('/training/{train_id}')
+async def delete_training(train_id: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.training.delete_one({'id': train_id, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Training not found')
+    return {'ok': True}
+
+
+# =================== ASSETS ===================
+@api.get('/assets')
+async def list_assets(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    items = await db.assets.find({'tenant_id': tid}).sort('created_at', -1).to_list(200)
+    return [strip_internal(i) for i in items]
+
+@api.post('/assets')
+async def create_asset(payload: AssetCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    asset = Asset(
+        tenant_id=tid,
+        name=payload.name,
+        asset_type=payload.asset_type,
+        serial_number=payload.serial_number,
+        purchase_date=payload.purchase_date,
+        purchase_cost=payload.purchase_cost,
+        assigned_to=payload.assigned_to,
+    )
+    await db.assets.insert_one(asset.dict())
+    return asset.dict()
+
+@api.patch('/assets/{asset_id}')
+async def update_asset(asset_id: str, payload: AssetUpdate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    update = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.assets.update_one({'id': asset_id, 'tenant_id': tid}, {'$set': update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Asset not found')
+    asset = await db.assets.find_one({'id': asset_id})
+    return strip_internal(asset)
+
+@api.delete('/assets/{asset_id}')
+async def delete_asset(asset_id: str, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    res = await db.assets.delete_one({'id': asset_id, 'tenant_id': tid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Asset not found')
+    return {'ok': True}
+
+
+# =================== PAYSLIPS ===================
+@api.get('/payslips')
+async def list_payslips(month: Optional[str] = None, year: Optional[str] = None, user=Depends(get_current_user)):
+    db = get_db()
+    tid = _tenant_scope(user)
+    query = {'tenant_id': tid, 'employee_id': user.get('employee_id')}
+    if month:
+        query['month'] = month
+    if year:
+        query['year'] = year
+    items = await db.payslips.find(query).sort('created_at', -1).to_list(200)
+    return [strip_internal(i) for i in items]
+
+@api.post('/payslips')
+async def create_payslip(payload: PayslipCreate, user=Depends(require_role(ROLE_ADMIN, ROLE_SUPER))):
+    tid = _tenant_scope(user)
+    db = get_db()
+    emp = await db.employees.find_one({'id': payload.employee_id, 'tenant_id': tid})
+    if not emp:
+        raise HTTPException(status_code=404, detail='Employee not found')
+    net = payload.basic_salary + payload.allowances - payload.deductions
+    slip = Payslip(
+        tenant_id=tid,
+        employee_id=payload.employee_id,
+        employee_name=f"{emp['first_name']} {emp['last_name']}",
+        month=payload.month,
+        year=payload.year,
+        basic_salary=payload.basic_salary,
+        allowances=payload.allowances,
+        deductions=payload.deductions,
+        gross_salary=payload.basic_salary + payload.allowances,
+        net_salary=net,
+    )
+    await db.payslips.insert_one(slip.dict())
+    return slip.dict()
+
+@api.get('/payslips/{slip_id}')
+async def get_payslip(slip_id: str, user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    slip = await db.payslips.find_one({'id': slip_id, 'tenant_id': tid})
+    if not slip:
+        raise HTTPException(status_code=404, detail='Payslip not found')
+    return strip_internal(slip)
+
+
+# =================== REPORTS ===================
+@api.get('/reports/summary')
+async def get_reports_summary(user=Depends(get_current_user)):
+    tid = _tenant_scope(user)
+    db = get_db()
+    
+    if user.get('role') == ROLE_EMP:
+        return {'error': 'Forbidden'}
+    
+    total_emp = await db.employees.count_documents({'tenant_id': tid})
+    active_emp = await db.employees.count_documents({'tenant_id': tid, 'status': 'Active'})
+    on_leave = await db.employees.count_documents({'tenant_id': tid, 'status': 'On Leave'})
+    probation = await db.employees.count_documents({'tenant_id': tid, 'status': 'Probation'})
+    
+    pending_to = await db.time_off_requests.count_documents({'tenant_id': tid, 'status': 'Pending'})
+    approved_to = await db.time_off_requests.count_documents({'tenant_id': tid, 'status': 'Approved'})
+    
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    present_today = await db.attendance.count_documents({'tenant_id': tid, 'date': today, 'status': 'Present'})
+    
+    return {
+        'total_employees': total_emp,
+        'active_employees': active_emp,
+        'on_leave': on_leave,
+        'probation': probation,
+        'pending_timeoff': pending_to,
+        'approved_timeoff': approved_to,
+        'present_today': present_today,
+    }
 
 
 app.include_router(api)
