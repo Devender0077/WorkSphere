@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { useAuth } from '@/contexts/AuthContext';
+import ProductTour from '@/components/tour/ProductTour';
 
 const DashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -28,6 +29,7 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      <ProductTour />
     </div>
   );
 };

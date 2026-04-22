@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 import { TEAM_PERFORMANCE, STATUS_COLORS } from '@/data/mock';
+import { FaceEnrollReminderWrapper } from '@/components/biometric/FaceEnrollReminder';
 
 const iconMap = { users: Users, briefcase: Briefcase, plus: Plus, minus: Minus, building: Building2 };
 
@@ -93,6 +94,7 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-6">
+      <FaceEnrollReminderWrapper />
       <div>
         <h1 className="text-[26px] font-bold text-foreground">Hi, {firstName}</h1>
         <p className="text-[13.5px] text-muted-foreground mt-1">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronsLeft, Grid, Users, ClipboardList, Clock, Calendar, Wallet, TrendingUp, Briefcase, HelpCircle, Settings, Sun, Moon, Building2, Shield, User, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, Grid, Users, ClipboardList, Clock, Calendar, Wallet, TrendingUp, Briefcase, HelpCircle, Settings, Sun, Moon, Building2, Shield, User, LogOut, Newspaper, Folder } from 'lucide-react';
 import { getMenu } from '@/data/menu';
 import { ROLE_CONFIG } from '@/data/mock';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -11,6 +11,7 @@ const ICONS = {
   grid: Grid, users: Users, clipboard: ClipboardList, clock: Clock, calendar: Calendar,
   wallet: Wallet, 'trending-up': TrendingUp, briefcase: Briefcase,
   'help-circle': HelpCircle, settings: Settings, building: Building2, shield: Shield, user: User,
+  newspaper: Newspaper, folder: Folder,
 };
 
 const Logo = ({ collapsed }) => (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Mail, MessageSquareMore, ChevronDown, LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_CONFIG } from '@/data/mock';
 import { cn } from '@/lib/utils';
@@ -23,10 +24,10 @@ const TopBar = () => {
         </div>
 
         <nav className="hidden lg:flex items-center gap-7 text-[14px] font-medium text-foreground/80">
-          <a href="#" className="hover:text-foreground">Documents</a>
-          <a href="#" className="hover:text-foreground">News</a>
-          <a href="#" className="hover:text-foreground">Payslip</a>
-          <a href="#" className="hover:text-foreground">Report</a>
+          <Link to="/documents" className="hover:text-foreground">Documents</Link>
+          <Link to="/news" className="hover:text-foreground">News</Link>
+          <Link to="/payroll/slips" className="hover:text-foreground">Payslip</Link>
+          <Link to="/reports" className="hover:text-foreground">Report</Link>
         </nav>
 
         <div className="flex items-center gap-2 ml-auto">

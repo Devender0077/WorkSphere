@@ -14,6 +14,8 @@ export const getMenu = (role) => {
           ],
         },
         { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
+        { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
+        { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
         { key: 'reports', label: 'Reports', icon: 'trending-up', to: '/reports' },
       ],
       bottom: [
@@ -36,8 +38,10 @@ export const getMenu = (role) => {
         },
         {
           key: 'checklist', label: 'Checklist', icon: 'clipboard', children: [
-            { key: 'my-tasks', label: 'My Tasks', to: '/checklist/my-tasks' },
-            { key: 'team-tasks', label: 'Team Tasks', to: '/checklist/team-tasks' },
+            { key: 'todos', label: 'To-Dos', to: '/checklist/todos' },
+            { key: 'onboarding', label: 'Onboarding', to: '/checklist/onboarding' },
+            { key: 'offboarding', label: 'Offboarding', to: '/checklist/offboarding' },
+            { key: 'setting', label: 'Setting', to: '/checklist/setting' },
           ],
         },
         {
@@ -50,6 +54,7 @@ export const getMenu = (role) => {
           key: 'attendance', label: 'Attendance', icon: 'calendar', children: [
             { key: 'daily', label: 'Daily Log', to: '/attendance/daily' },
             { key: 'reports', label: 'Reports', to: '/attendance/reports' },
+            { key: 'biometric', label: 'Biometric & Face ID', to: '/attendance/biometric' },
           ],
         },
         {
@@ -70,6 +75,8 @@ export const getMenu = (role) => {
             { key: 'applicants', label: 'Applicants', to: '/recruitment/applicants' },
           ],
         },
+        { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
+        { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
         { key: 'roles', label: 'Roles & Permissions', icon: 'shield', to: '/roles' },
       ],
       bottom: [
@@ -88,6 +95,8 @@ export const getMenu = (role) => {
       { key: 'payslip', label: 'My Payslips', icon: 'wallet', to: '/payroll/slips' },
       { key: 'attendance', label: 'My Attendance', icon: 'calendar', to: '/attendance/daily' },
       { key: 'directory', label: 'Directory', icon: 'users', to: '/employees/directory' },
+      { key: 'news', label: 'News', icon: 'newspaper', to: '/news' },
+      { key: 'documents', label: 'Documents', icon: 'folder', to: '/documents' },
     ],
     bottom: [
       { key: 'help', label: 'Help Center', icon: 'help-circle', to: '/help', badge: 8 },
